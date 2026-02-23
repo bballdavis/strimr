@@ -4,6 +4,12 @@ struct LibraryRecommendedView: View {
     @State var viewModel: LibraryRecommendedViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
 
+    /// When set, overrides the per-hub landscape-identifier logic and forces
+    /// every carousel to use the specified layout. Useful when the consuming
+    /// view already knows the library's content type (e.g. "other videos"
+    /// libraries that should always show letterbox thumbnails).
+    var overrideLayout: MediaCarousel.Layout? = nil
+
     private let landscapeHubIdentifiers: [String] = [
         "inprogress",
     ]
@@ -60,6 +66,7 @@ struct LibraryRecommendedView: View {
     }
 
     private func shouldUseLandscape(for hub: Hub) -> Bool {
+        if let override = overrideLayout { return override == .landscape }
         let identifier = hub.id.lowercased()
         return landscapeHubIdentifiers.contains { identifier.contains($0) }
     }

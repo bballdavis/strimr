@@ -5,6 +5,8 @@ enum PlayableItemType: String, Codable, Hashable {
     case show
     case season
     case episode
+    /// Plex "Other Videos" / clip library items
+    case clip
 
     init?(plexType: PlexItemType) {
         switch plexType {
@@ -16,6 +18,8 @@ enum PlayableItemType: String, Codable, Hashable {
             self = .season
         case .episode:
             self = .episode
+        case .clip:
+            self = .clip
         case .collection, .playlist, .unknown:
             return nil
         }
@@ -31,6 +35,8 @@ enum PlayableItemType: String, Codable, Hashable {
             .season
         case .episode:
             .episode
+        case .clip:
+            .clip
         }
     }
 }

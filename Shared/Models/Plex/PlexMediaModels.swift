@@ -7,6 +7,8 @@ enum PlexItemType: String, Codable {
     case episode
     case collection
     case playlist
+    /// Plex "Other Videos" libraries — type = "clip" on the server
+    case clip
     case unknown
 
     var isSupported: Bool {
@@ -15,7 +17,7 @@ enum PlexItemType: String, Codable {
 
     var isPlayable: Bool {
         switch self {
-        case .movie, .show, .season, .episode:
+        case .movie, .show, .season, .episode, .clip:
             true
         case .collection, .playlist, .unknown:
             false

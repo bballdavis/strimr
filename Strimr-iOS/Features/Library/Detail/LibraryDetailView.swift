@@ -1,8 +1,10 @@
 import SwiftUI
+import PlinxCore
 
 struct LibraryDetailView: View {
     @Environment(PlexAPIContext.self) private var plexApiContext
     @Environment(SettingsManager.self) private var settingsManager
+    @Environment(\.safetyPolicy) private var safetyPolicy
     let library: Library
     let onSelectMedia: (MediaDisplayItem) -> Void
 
@@ -23,20 +25,15 @@ struct LibraryDetailView: View {
                 switch selectedTab {
                 case .recommended:
                     LibraryRecommendedView(
-                        viewModel: LibraryRecommendedViewModel(
-                            library: library,
-                            context: plexApiContext,
-                        ),
+                        viewModel: makeRecommendedViewModel(),
                         onSelectMedia: onSelectMedia,
+                        overrideLayout: preferredCarouselLayout,
                     )
                 case .browse:
                     LibraryBrowseView(
-                        viewModel: LibraryBrowseViewModel(
-                            library: library,
-                            context: plexApiContext,
-                            settingsManager: settingsManager,
-                        ),
+                        viewModel: makeBrowseViewModel(),
                         onSelectMedia: onSelectMedia,
+                        overrideLayout: preferredCarouselLayout,
                     )
                 case .collections:
                     LibraryCollectionsView(
@@ -83,6 +80,61 @@ struct LibraryDetailView: View {
                 true
             }
         }
+    }
+
+    /// Determines the carousel layout for this library's content.
+    /// Movie and show libraries use portrait (poster) cards.
+    /// All other library types (e.g. home videos, clips) use landscape (letterbox).
+    private var preferredCarouselLayout: MediaCarousel.Layout? {
+        switch library.type {
+        case .movie, .show: return nil          // let hub-level heuristic decide
+        default:            return .landscape   // letterbox for other video types
+        }
+    }
+
+    private func makeRecommendedViewModel() -> LibraryRecommendedViewModel {
+        let vm = LibraryRecommendedViewModel(library: library, context: plexApiContext)
+        let policy = safetyPolicy
+        vm.hubFilter = { filterRecommendedHub($0, policy: policy) }
+        return vm
+    }
+
+    private func makeBrowseViewModel() -> LibraryBrowseViewModel {
+        let vm = LibraryBrowseViewModel(library: library, context: plexApiContext, settingsManager: settingsManager)
+        let policy = safetyPolicy
+        vm.itemFilter = { item in
+            isAllowedInLibraryContext(item, policy: policy)
+        }
+        return vm
+    }
+
+    private var excludesCollectionsInBrowseContext: Bool {
+        switch library.type {
+        case .movie, .show:
+            true
+        default:
+            false
+        }
+    }
+
+    private func isAllowedInLibraryContext(_ item: MediaDisplayItem, policy: SafetyPolicy) -> Bool {
+        if excludesCollectionsInBrowseContext, case .collection = item {
+            return false
+        }
+        return StrimrAdapter.isAllowed(item, policy: policy)
+    }
+
+    private func filterRecommendedHub(_ hub: Hub, policy: SafetyPolicy) -> Hub? {
+        guard let safetyFiltered = StrimrAdapter.filtered(hub, policy: policy) else {
+            return nil
+        }
+        let contextFilteredItems = safetyFiltered.items.filter { item in
+            isAllowedInLibraryContext(item, policy: policy)
+        }
+        guard !contextFilteredItems.isEmpty else {
+            return nil
+        }
+        return Hub(id: safetyFiltered.id, title: safetyFiltered.title, items: contextFilteredItems)
     }
 }
 

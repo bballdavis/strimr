@@ -323,6 +323,8 @@ private struct WatchTogetherSelectedMediaCard: View {
             String(localized: "search.badge.collection")
         case .playlist:
             String(localized: "search.badge.playlist")
+        case .clip:
+            String(localized: "search.badge.clip")
         case .unknown:
             String(localized: "search.badge.unknown")
         }

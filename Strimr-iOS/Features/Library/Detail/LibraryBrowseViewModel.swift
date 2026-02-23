@@ -21,6 +21,10 @@ final class LibraryBrowseViewModel {
     private var reachedEnd = false
     private var hasLoadedMeta = false
 
+    /// Optional per-item filter applied after each page loads.
+    /// Return `true` to keep an item. Defaults to `nil` (no filtering).
+    var itemFilter: ((MediaDisplayItem) -> Bool)? = nil
+
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
 
@@ -101,7 +105,16 @@ final class LibraryBrowseViewModel {
         do {
             let start = reset ? 0 : browseItems.count
             let endpoint = resolvedEndpoint(sectionId: sectionId)
-            let includeCollections = settingsManager.interface.displayCollections ? true : nil
+            
+            let includeCollections: Bool? = {
+                switch library.type {
+                case .movie, .show:
+                    return false
+                default:
+                    return settingsManager.interface.displayCollections ? true : nil
+                }
+            }()
+            
             let includeMeta = !hasLoadedMeta
             let queryItems = controls.buildQueryItems(
                 baseItems: endpoint.queryItems,
@@ -120,9 +133,24 @@ final class LibraryBrowseViewModel {
                 hasLoadedMeta = true
             }
 
-            let newItems = (response.mediaContainer.metadata ?? [])
+            let rawItems = (response.mediaContainer.metadata ?? [])
                 .compactMap(mapBrowseItem)
-            let total = response.mediaContainer.totalSize ?? (start + newItems.count)
+            
+            let newItems: [LibraryBrowseItem] = {
+                if let filter = itemFilter {
+                    return rawItems.filter { item in
+                        switch item {
+                        case .media(let media):
+                            return filter(media)
+                        case .folder:
+                            return true
+                        }
+                    }
+                }
+                return rawItems
+            }()
+
+            let total = response.mediaContainer.totalSize ?? (start + rawItems.count)
 
             if reset {
                 browseItems = newItems
@@ -130,7 +158,7 @@ final class LibraryBrowseViewModel {
                 browseItems.append(contentsOf: newItems)
             }
 
-            reachedEnd = browseItems.count >= total || newItems.isEmpty
+            reachedEnd = (start + rawItems.count) >= total || rawItems.isEmpty
         } catch {
             if reset {
                 resetState(error: error.localizedDescription)
