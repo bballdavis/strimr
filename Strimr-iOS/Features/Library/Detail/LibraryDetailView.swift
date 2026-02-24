@@ -12,14 +12,10 @@ struct LibraryDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("library.detail.tabPicker", selection: $selectedTab) {
-                ForEach(availableTabs) { tab in
-                    Text(tab.title).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
+            // Plinx: kid-friendly adaptive icon-button tab row instead of
+            // the standard segmented control.
+            KidsLibraryTabPicker(tabs: availableTabs, selectedTab: $selectedTab)
+                .padding(.top, 12)
 
             Group {
                 switch selectedTab {
@@ -62,20 +58,17 @@ struct LibraryDetailView: View {
                 selectedTab = .recommended
             }
         }
-        .onChange(of: settingsManager.interface.displayPlaylists) { _, displayPlaylists in
-            if !displayPlaylists, selectedTab == .playlists {
-                selectedTab = .recommended
-            }
-        }
     }
 
     private var availableTabs: [LibraryDetailTab] {
         LibraryDetailTab.allCases.filter { tab in
             switch tab {
+            case .playlists:
+                // Plinx: playlists surface is hidden — not suitable for the
+                // primary kid-facing library tab.
+                false
             case .collections:
                 settingsManager.interface.displayCollections
-            case .playlists:
-                settingsManager.interface.displayPlaylists
             default:
                 true
             }
@@ -159,5 +152,84 @@ enum LibraryDetailTab: String, CaseIterable, Identifiable {
         case .playlists:
             "library.detail.tab.playlists"
         }
+    }
+
+    /// SF Symbol name for the kid-friendly icon button tab bar.
+    var iconName: String {
+        switch self {
+        case .recommended: return "star.fill"
+        case .browse:      return "square.grid.2x2.fill"
+        case .collections: return "rectangle.stack.fill"
+        case .playlists:   return "music.note.list"
+        }
+    }
+}
+
+// MARK: - Kids Icon Tab Picker
+
+/// Adaptive icon-button tab bar for library navigation.
+///
+/// Uses large buttons on iPad (`.regular` size class) and comfortably-sized but
+/// smaller buttons on iPhone (`.compact` size class). The design intentionally
+/// avoids the default segmented control in favour of large tap targets that are
+/// easy for children to hit accurately.
+private struct KidsLibraryTabPicker: View {
+    let tabs: [LibraryDetailTab]
+    @Binding var selectedTab: LibraryDetailTab
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    private var isRegular: Bool { sizeClass == .regular }
+
+    // Size tokens — compact (iPhone) vs regular (iPad)
+    private var buttonMinWidth: CGFloat  { isRegular ? 108 : 82 }
+    private var buttonHeight: CGFloat    { isRegular ? 72 : 56 }
+    private var iconPointSize: CGFloat   { isRegular ? 26 : 19 }
+    private var labelFont: Font          { isRegular ? .subheadline : .caption }
+    private var cornerRadius: CGFloat    { isRegular ? 16 : 12 }
+    private var hSpacing: CGFloat        { isRegular ? 14 : 10 }
+    private var iconLabelSpacing: CGFloat{ isRegular ? 8 : 5 }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: hSpacing) {
+                ForEach(tabs) { tab in
+                    tabButton(tab)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+        .accessibilityIdentifier("library.detail.tabPicker")
+    }
+
+    private func tabButton(_ tab: LibraryDetailTab) -> some View {
+        let isSelected = selectedTab == tab
+        return Button {
+            selectedTab = tab
+        } label: {
+            VStack(spacing: iconLabelSpacing) {
+                Image(systemName: tab.iconName)
+                    .font(.system(size: iconPointSize, weight: .semibold))
+                Text(tab.title)
+                    .font(labelFont.bold())
+                    .lineLimit(1)
+            }
+            .frame(minWidth: buttonMinWidth, minHeight: buttonHeight)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(isSelected ? Color.accentColor : Color.white.opacity(0.10))
+            )
+            .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isSelected)
+        .accessibilityIdentifier("library.detail.tab.\(tab.rawValue)")
     }
 }

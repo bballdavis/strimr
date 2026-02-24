@@ -28,20 +28,26 @@ struct LibraryBrowseView: View {
     }
 
     var body: some View {
-        @Bindable var controls = viewModel.controls
+        // @Bindable var controls = viewModel.controls
+        // (controls are hidden in Plinx — see comment below)
 
         GeometryReader { proxy in
             let singleColWidth = proxy.size.width - 32
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    if controls.hasDisplayTypes {
-                        LibraryBrowseControlsView(
-                            viewModel: controls,
-                            showsBackButton: viewModel.canNavigateBack,
-                            onNavigateBack: viewModel.navigateBack
-                        )
-                        .padding(.horizontal, 16)
-                    }
+                    // Plinx: The advanced sort/filter/folder controls are hidden
+                    // because they expose complexity that isn't kid-appropriate
+                    // (sorting by rating, folder browsing, display-type picker, etc).
+                    // Re-enable behind a parental gate in a future settings screen.
+                    //
+                    // if controls.hasDisplayTypes {
+                    //     LibraryBrowseControlsView(
+                    //         viewModel: controls,
+                    //         showsBackButton: viewModel.canNavigateBack,
+                    //         onNavigateBack: viewModel.navigateBack
+                    //     )
+                    //     .padding(.horizontal, 16)
+                    // }
 
                     if useSingleColumnList {
                         LazyVStack(spacing: 12) {
