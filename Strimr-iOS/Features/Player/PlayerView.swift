@@ -320,6 +320,7 @@ struct PlayerView: View {
     }
 
     private func selectAudioTrack(_ id: Int?) {
+        guard selectedAudioTrackID != id else { return }
         selectedAudioTrackID = id
         playerCoordinator.selectAudioTrack(id: id)
 
@@ -336,6 +337,7 @@ struct PlayerView: View {
     }
 
     private func selectSubtitleTrack(_ id: Int?) {
+        guard selectedSubtitleTrackID != id else { return }
         selectedSubtitleTrackID = id
         playerCoordinator.selectSubtitleTrack(id: id)
 
@@ -459,7 +461,9 @@ struct PlayerView: View {
            let track = audioTracks.first(where: { $0.ffIndex == preferredAudioIndex })
         {
             selectedAudioTrackID = track.id
-            playerCoordinator.selectAudioTrack(id: track.id)
+            if !track.isSelected {
+                playerCoordinator.selectAudioTrack(id: track.id)
+            }
             appliedPreferredAudio = true
         }
 
@@ -468,7 +472,9 @@ struct PlayerView: View {
            let track = subtitleTracks.first(where: { $0.ffIndex == preferredSubtitleIndex })
         {
             selectedSubtitleTrackID = track.id
-            playerCoordinator.selectSubtitleTrack(id: track.id)
+            if !track.isSelected {
+                playerCoordinator.selectSubtitleTrack(id: track.id)
+            }
             appliedPreferredSubtitle = true
         }
     }

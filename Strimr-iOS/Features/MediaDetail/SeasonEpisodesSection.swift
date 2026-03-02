@@ -79,8 +79,9 @@ struct SeasonEpisodesSection: View {
         }
         .pickerStyle(.menu)
         .tint(.brandSecondaryForeground)
-        .background(.brandSecondary)
+        .background(Color(UIColor.systemGray4))
         .cornerRadius(12)
+        .colorScheme(.dark)
     }
 
     @ViewBuilder

@@ -7,11 +7,12 @@ struct MediaCarousel: View {
     let items: [MediaDisplayItem]
     let showsLabels: Bool
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: ((MediaDisplayItem) -> Void)? = nil
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: spacing(for: layout)) {
-                ForEach(items, id: \.id) { item in
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     card(for: item)
                 }
             }
@@ -33,10 +34,14 @@ struct MediaCarousel: View {
         case .portrait:
             PortraitMediaCard(media: media, showsLabels: showsLabels) {
                 onSelectMedia(media)
+            } onLongPress: {
+                onLongPressMedia?(media)
             }
         case .landscape:
             LandscapeMediaCard(media: media, showsLabels: showsLabels) {
                 onSelectMedia(media)
+            } onLongPress: {
+                onLongPressMedia?(media)
             }
         }
     }

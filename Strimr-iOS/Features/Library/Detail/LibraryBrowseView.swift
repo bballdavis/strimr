@@ -3,6 +3,8 @@ import SwiftUI
 struct LibraryBrowseView: View {
     @State var viewModel: LibraryBrowseViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
+    var topContent: AnyView? = nil
 
     /// When `.landscape`, renders wider cells with LandscapeMediaCard instead of
     /// portrait poster cards. Useful for libraries whose thumbnails are 16:9
@@ -35,6 +37,10 @@ struct LibraryBrowseView: View {
             let singleColWidth = proxy.size.width - 32
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    if let topContent {
+                        topContent
+                    }
+
                     // Plinx: The advanced sort/filter/folder controls are hidden
                     // because they expose complexity that isn't kid-appropriate
                     // (sorting by rating, folder browsing, display-type picker, etc).
@@ -88,17 +94,21 @@ struct LibraryBrowseView: View {
 
     @ViewBuilder
     private func browseContent(width: CGFloat) -> some View {
-        ForEach(Array(viewModel.browseItems.enumerated()), id: \.element.id) { index, item in
+        ForEach(Array(viewModel.browseItems.enumerated()), id: \.offset) { index, item in
             Group {
                 switch item {
                 case let .media(media):
                     if isLandscape {
                         LandscapeMediaCard(media: media, width: width, showsLabels: true) {
                             onSelectMedia(media)
+                        } onLongPress: {
+                            onLongPressMedia(media)
                         }
                     } else {
                         PortraitMediaCard(media: media, width: width, showsLabels: true) {
                             onSelectMedia(media)
+                        } onLongPress: {
+                            onLongPressMedia(media)
                         }
                     }
                 case let .folder(folder):

@@ -3,6 +3,8 @@ import SwiftUI
 struct LibraryPlaylistsView: View {
     @State var viewModel: LibraryPlaylistsViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
+    var topContent: AnyView? = nil
 
     private var gridColumns: [GridItem] {
         [
@@ -12,21 +14,29 @@ struct LibraryPlaylistsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: 16) {
-                ForEach(viewModel.items) { media in
-                    PortraitMediaCard(media: media, width: 112, showsLabels: true) {
-                        onSelectMedia(media)
-                    }
-                    .task {
-                        if media == viewModel.items.last {
-                            await viewModel.loadMore()
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 12) {
+                if let topContent {
+                    topContent
                 }
 
-                if viewModel.isLoadingMore {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
+                LazyVGrid(columns: gridColumns, spacing: 16) {
+                    ForEach(viewModel.items) { media in
+                        PortraitMediaCard(media: media, width: 112, showsLabels: true) {
+                            onSelectMedia(media)
+                        } onLongPress: {
+                            onLongPressMedia(media)
+                        }
+                        .task {
+                            if media == viewModel.items.last {
+                                await viewModel.loadMore()
+                            }
+                        }
+                    }
+
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    }
                 }
             }
             .padding(.horizontal, 16)

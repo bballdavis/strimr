@@ -3,6 +3,9 @@ import SwiftUI
 struct LibraryRecommendedView: View {
     @State var viewModel: LibraryRecommendedViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
+    var topContent: AnyView? = nil
+    @Environment(SettingsManager.self) private var settingsManager
 
     /// When set, overrides the per-hub landscape-identifier logic and forces
     /// every carousel to use the specified layout. Useful when the consuming
@@ -14,10 +17,27 @@ struct LibraryRecommendedView: View {
         "inprogress",
     ]
 
+    private var visibleHubs: [Hub] {
+        let hubs = viewModel.hubs
+        guard !hubs.isEmpty else { return [] }
+
+        let availableIds = hubs.map(\.id)
+        let visibleIds = settingsManager.resolvedRecommendSectionIds(
+            for: viewModel.library.id,
+            availableSectionIds: availableIds
+        )
+        let hubById = Dictionary(uniqueKeysWithValues: hubs.map { ($0.id, $0) })
+        return visibleIds.compactMap { hubById[$0] }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                ForEach(viewModel.hubs) { hub in
+                if let topContent {
+                    topContent
+                }
+
+                ForEach(visibleHubs) { hub in
                     if hub.hasItems {
                         MediaHubSection(title: hub.title) {
                             carousel(for: hub)
@@ -54,6 +74,7 @@ struct LibraryRecommendedView: View {
                 items: hub.items,
                 showsLabels: true,
                 onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia,
             )
         } else {
             MediaCarousel(
@@ -61,6 +82,7 @@ struct LibraryRecommendedView: View {
                 items: hub.items,
                 showsLabels: true,
                 onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia,
             )
         }
     }

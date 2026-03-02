@@ -12,6 +12,7 @@ struct MediaCard: View {
     let artworkKind: MediaImageViewModel.ArtworkKind
     let showsLabels: Bool
     let onTap: () -> Void
+    let onLongPress: (() -> Void)?
 
     private var progress: Double? {
         media.viewProgressPercentage.map { $0 / 100 }
@@ -53,6 +54,9 @@ struct MediaCard: View {
             .onPlayPauseCommand(perform: onTap)
         #endif
             .onTapGesture(perform: onTap)
+            .onLongPressGesture {
+                onLongPress?()
+            }
     }
 
     private var artwork: some View {

@@ -1,15 +1,22 @@
 import Foundation
 import Observation
+import OSLog
 
 @MainActor
 @Observable
 final class LibraryCollectionsViewModel {
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plinx", category: "LibraryCollectionsSafety")
+
     let library: Library
     var items: [MediaDisplayItem] = []
     var isLoading = false
     var isLoadingMore = false
     var errorMessage: String?
     private var reachedEnd = false
+
+    /// Optional per-item filter applied after each page loads.
+    /// Return `true` to keep an item. Defaults to `nil` (no filtering).
+    var itemFilter: ((MediaDisplayItem) -> Bool)? = nil
 
     @ObservationIgnored private let context: PlexAPIContext
 
@@ -57,9 +64,13 @@ final class LibraryCollectionsViewModel {
                 pagination: PlexPagination(start: start, size: 20),
             )
 
-            let newItems = (response.mediaContainer.metadata ?? [])
+            let rawItems = (response.mediaContainer.metadata ?? [])
                 .compactMap(MediaDisplayItem.init)
-            let total = response.mediaContainer.totalSize ?? (start + newItems.count)
+            let newItems: [MediaDisplayItem] = {
+                guard let filter = itemFilter else { return rawItems }
+                return rawItems.filter(filter)
+            }()
+            let total = response.mediaContainer.totalSize ?? (start + rawItems.count)
 
             if reset {
                 items = newItems
@@ -67,8 +78,26 @@ final class LibraryCollectionsViewModel {
                 items.append(contentsOf: newItems)
             }
 
-            reachedEnd = items.count >= total || newItems.isEmpty
+            reachedEnd = (start + rawItems.count) >= total || rawItems.isEmpty
+
+            if rawItems.count != newItems.count {
+                self.logger.debug(
+                    "Filtered collections library=\(self.library.title, privacy: .public) before=\(rawItems.count) after=\(newItems.count) start=\(start)"
+                )
+            }
         } catch {
+            if library.type == .movie || library.type == .show {
+                logger.error(
+                    "Collections fetch failed for movie/show library=\(self.library.title, privacy: .public) error=\(error.localizedDescription, privacy: .public); treating as empty"
+                )
+                if reset {
+                    items = []
+                }
+                reachedEnd = true
+                errorMessage = nil
+                return
+            }
+
             if reset {
                 resetState(error: error.localizedDescription)
             } else {

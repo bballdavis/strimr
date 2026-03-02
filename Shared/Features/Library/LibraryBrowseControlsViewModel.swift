@@ -216,8 +216,8 @@ final class LibraryBrowseControlsViewModel {
     ) -> [URLQueryItem] {
         var items = baseItems
 
-        setQueryItem(name: "includeCollections", value: includeCollections == true ? "1" : nil, in: &items)
-        setQueryItem(name: "includeMeta", value: includeMeta ? "1" : nil, in: &items)
+        setQueryItem(name: "includeCollections", value: includeCollections == true ? "1" : "0", in: &items)
+        setQueryItem(name: "includeMeta", value: includeMeta ? "1" : "0", in: &items)
 
         if let selectedSort {
             let sortValue = selectedSort.direction == .asc
@@ -269,12 +269,6 @@ final class LibraryBrowseControlsViewModel {
            !displayType.sorts.contains(where: { $0.key == selectedSort.sort.key })
         {
             self.selectedSort = nil
-        }
-
-        if selectedSort == nil,
-           let activeSort = displayType.sorts.first(where: { $0.active == true })
-        {
-            selectedSort = SortSelection(sort: activeSort, direction: activeSort.defaultDirection)
         }
     }
 

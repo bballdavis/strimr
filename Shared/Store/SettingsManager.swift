@@ -98,6 +98,45 @@ final class SettingsManager {
         persist()
     }
 
+    func libraryViewSettings(for libraryId: String) -> LibraryViewSettings {
+        settings.interface.libraryViewSettingsByLibraryId[libraryId] ?? LibraryViewSettings()
+    }
+
+    func setRecommendSectionHidden(_ hidden: Bool, libraryId: String, sectionId: String) {
+        var librarySettings = libraryViewSettings(for: libraryId)
+        var hiddenIds = Set(librarySettings.hiddenRecommendSectionIds)
+        if hidden {
+            hiddenIds.insert(sectionId)
+        } else {
+            hiddenIds.remove(sectionId)
+        }
+        librarySettings.hiddenRecommendSectionIds = hiddenIds.sorted()
+        settings.interface.libraryViewSettingsByLibraryId[libraryId] = librarySettings
+        persist()
+    }
+
+    func setRecommendSectionOrder(_ sectionIds: [String], libraryId: String) {
+        var librarySettings = libraryViewSettings(for: libraryId)
+        librarySettings.recommendSectionOrder = sectionIds
+        settings.interface.libraryViewSettingsByLibraryId[libraryId] = librarySettings
+        persist()
+    }
+
+    func resolvedRecommendSectionIds(for libraryId: String, availableSectionIds: [String]) -> [String] {
+        guard !availableSectionIds.isEmpty else { return [] }
+
+        let librarySettings = libraryViewSettings(for: libraryId)
+        let availableSet = Set(availableSectionIds)
+
+        let orderedKnown = librarySettings.recommendSectionOrder.filter { availableSet.contains($0) }
+        let orderedKnownSet = Set(orderedKnown)
+        let appended = availableSectionIds.filter { !orderedKnownSet.contains($0) }
+        let visibilityOrdered = orderedKnown + appended
+
+        let hiddenIds = Set(librarySettings.hiddenRecommendSectionIds)
+        return visibilityOrdered.filter { !hiddenIds.contains($0) }
+    }
+
     func setDownloadWiFiOnly(_ enabled: Bool) {
         settings.downloads.wifiOnly = enabled
         persist()

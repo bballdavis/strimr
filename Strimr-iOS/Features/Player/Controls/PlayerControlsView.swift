@@ -163,7 +163,7 @@ private struct PlayerControlsHeader: View {
                 Image(systemName: "chevron.backward")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 63, height: 63)
                     .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)

@@ -1,58 +1,98 @@
 import SwiftUI
 import PlinxCore
+import OSLog
 
 struct LibraryDetailView: View {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plinx", category: "LibraryDetailSafety")
+
     @Environment(PlexAPIContext.self) private var plexApiContext
     @Environment(SettingsManager.self) private var settingsManager
     @Environment(\.safetyPolicy) private var safetyPolicy
+    @Environment(\.dismiss) private var dismiss
     let library: Library
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
 
     @State private var selectedTab: LibraryDetailTab = .recommended
 
-    var body: some View {
-        VStack(spacing: 0) {
-            // Plinx: kid-friendly adaptive icon-button tab row instead of
-            // the standard segmented control.
-            KidsLibraryTabPicker(tabs: availableTabs, selectedTab: $selectedTab)
-                .padding(.top, 12)
+    private var scrollingTopContent: AnyView {
+        AnyView(
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 60, height: 60)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
 
-            Group {
-                switch selectedTab {
-                case .recommended:
-                    LibraryRecommendedView(
-                        viewModel: makeRecommendedViewModel(),
-                        onSelectMedia: onSelectMedia,
-                        overrideLayout: preferredCarouselLayout,
-                    )
-                case .browse:
-                    LibraryBrowseView(
-                        viewModel: makeBrowseViewModel(),
-                        onSelectMedia: onSelectMedia,
-                        overrideLayout: preferredCarouselLayout,
-                    )
-                case .collections:
-                    LibraryCollectionsView(
-                        viewModel: LibraryCollectionsViewModel(
-                            library: library,
-                            context: plexApiContext,
-                        ),
-                        onSelectMedia: onSelectMedia,
-                    )
-                case .playlists:
-                    LibraryPlaylistsView(
-                        viewModel: LibraryPlaylistsViewModel(
-                            library: library,
-                            context: plexApiContext,
-                        ),
-                        onSelectMedia: onSelectMedia,
-                    )
+                    Text(library.title)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
                 }
+
+                KidsLibraryTabPicker(tabs: availableTabs, selectedTab: $selectedTab)
+                    .frame(height: 76)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.top, 4)
+        )
+    }
+
+    var body: some View {
+        Group {
+            switch selectedTab {
+            case .recommended:
+                LibraryRecommendedView(
+                    viewModel: makeRecommendedViewModel(),
+                    onSelectMedia: onSelectMedia,
+                    onLongPressMedia: onLongPressMedia,
+                    topContent: scrollingTopContent,
+                    overrideLayout: preferredCarouselLayout,
+                )
+            case .browse:
+                LibraryBrowseView(
+                    viewModel: makeBrowseViewModel(),
+                    onSelectMedia: onSelectMedia,
+                    onLongPressMedia: onLongPressMedia,
+                    topContent: scrollingTopContent,
+                    overrideLayout: preferredCarouselLayout,
+                )
+            case .collections:
+                LibraryCollectionsView(
+                    viewModel: makeCollectionsViewModel(),
+                    onSelectMedia: onSelectMedia,
+                    onLongPressMedia: onLongPressMedia,
+                    topContent: scrollingTopContent,
+                )
+            case .playlists:
+                LibraryPlaylistsView(
+                    viewModel: LibraryPlaylistsViewModel(
+                        library: library,
+                        context: plexApiContext,
+                    ),
+                    onSelectMedia: onSelectMedia,
+                    onLongPressMedia: onLongPressMedia,
+                    topContent: scrollingTopContent,
+                )
+            }
         }
-        .navigationTitle(library.title)
-        .toolbarTitleDisplayMode(.inline)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .navigationBarBackButtonHidden(true)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .onChange(of: settingsManager.interface.displayCollections) { _, displayCollections in
             if !displayCollections, selectedTab == .collections {
                 selectedTab = .recommended
@@ -76,9 +116,13 @@ struct LibraryDetailView: View {
     }
 
     /// Determines the carousel layout for this library's content.
-    /// Movie and show libraries use portrait (poster) cards.
-    /// All other library types (e.g. home videos, clips) use landscape (letterbox).
+    /// Movie and show libraries use portrait (poster) cards — UNLESS the library
+    /// uses the "none" agent (e.g. YouTube, Home Videos), which have landscape content.
+    /// All other library types (e.g. clips) also use landscape (letterbox).
     private var preferredCarouselLayout: MediaCarousel.Layout? {
+        // "none" agent libraries (YouTube, Home Videos, etc.) always use landscape
+        // cards even though Plex may declare their section type as "movie".
+        if library.isNoneAgentLibrary { return .landscape }
         switch library.type {
         case .movie, .show: return nil          // let hub-level heuristic decide
         default:            return .landscape   // letterbox for other video types
@@ -96,38 +140,36 @@ struct LibraryDetailView: View {
         let vm = LibraryBrowseViewModel(library: library, context: plexApiContext, settingsManager: settingsManager)
         let policy = safetyPolicy
         vm.itemFilter = { item in
-            isAllowedInLibraryContext(item, policy: policy)
+              if (library.type == .movie || library.type == .show), case .collection = item {
+                 return false
+              }
+              return StrimrAdapter.isAllowed(item, policy: policy)
         }
         return vm
     }
 
-    private var excludesCollectionsInBrowseContext: Bool {
-        switch library.type {
-        case .movie, .show:
-            true
-        default:
-            false
+    private func makeCollectionsViewModel() -> LibraryCollectionsViewModel {
+        let vm = LibraryCollectionsViewModel(library: library, context: plexApiContext)
+        let policy = safetyPolicy
+        vm.itemFilter = { item in
+            StrimrAdapter.isAllowed(item, policy: policy)
         }
-    }
-
-    private func isAllowedInLibraryContext(_ item: MediaDisplayItem, policy: SafetyPolicy) -> Bool {
-        if excludesCollectionsInBrowseContext, case .collection = item {
-            return false
-        }
-        return StrimrAdapter.isAllowed(item, policy: policy)
+        return vm
     }
 
     private func filterRecommendedHub(_ hub: Hub, policy: SafetyPolicy) -> Hub? {
         guard let safetyFiltered = StrimrAdapter.filtered(hub, policy: policy) else {
+            Self.logger.debug(
+                "Drop hub id=\(hub.id, privacy: .public) title=\(hub.title, privacy: .public) reason=safety_filter_empty"
+            )
             return nil
         }
-        let contextFilteredItems = safetyFiltered.items.filter { item in
-            isAllowedInLibraryContext(item, policy: policy)
+        if safetyFiltered.items.count != hub.items.count {
+            Self.logger.debug(
+                "Filtered hub id=\(hub.id, privacy: .public) title=\(hub.title, privacy: .public) before=\(hub.items.count) after=\(safetyFiltered.items.count)"
+            )
         }
-        guard !contextFilteredItems.isEmpty else {
-            return nil
-        }
-        return Hub(id: safetyFiltered.id, title: safetyFiltered.title, items: contextFilteredItems)
+        return safetyFiltered
     }
 }
 
@@ -183,23 +225,27 @@ private struct KidsLibraryTabPicker: View {
 
     // Size tokens — compact (iPhone) vs regular (iPad)
     private var buttonMinWidth: CGFloat  { isRegular ? 108 : 82 }
-    private var buttonHeight: CGFloat    { isRegular ? 72 : 56 }
+    private var buttonHeight: CGFloat    { isRegular ? 66 : 52 }
     private var iconPointSize: CGFloat   { isRegular ? 26 : 19 }
     private var labelFont: Font          { isRegular ? .subheadline : .caption }
     private var cornerRadius: CGFloat    { isRegular ? 16 : 12 }
-    private var hSpacing: CGFloat        { isRegular ? 14 : 10 }
+    private var hSpacing: CGFloat        { isRegular ? 12 : 8 }
     private var iconLabelSpacing: CGFloat{ isRegular ? 8 : 5 }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: hSpacing) {
-                ForEach(tabs) { tab in
-                    tabButton(tab)
+        GeometryReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: hSpacing) {
+                    ForEach(tabs) { tab in
+                        tabButton(tab)
+                    }
                 }
+                .frame(minWidth: proxy.size.width - 32, alignment: .center)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
         }
+        .frame(height: buttonHeight + 8)
         .accessibilityIdentifier("library.detail.tabPicker")
     }
 
