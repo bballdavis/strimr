@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 
 @MainActor
 @Observable
@@ -13,6 +14,7 @@ final class HomeViewModel {
     @ObservationIgnored private let settingsManager: SettingsManager
     @ObservationIgnored private let libraryStore: LibraryStore
     @ObservationIgnored private var loadTask: Task<Void, Never>?
+    @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Strimr", category: "Home")
 
     init(context: PlexAPIContext, settingsManager: SettingsManager, libraryStore: LibraryStore) {
         self.context = context
@@ -80,14 +82,61 @@ final class HomeViewModel {
             guard !Task.isCancelled else { return }
 
             continueWatching = continueHub.map(mapHub)
-            recentlyAdded = promotedHubs
-                .filter { $0.hubIdentifier.lowercased().contains("recentlyadded") && $0.size > 0 }
-                .map(mapHub)
+            recentlyAdded = promotedHubs.compactMap { hub in
+                classifyRecentlyAddedHub(hub)
+            }
         } catch {
             guard !Task.isCancelled else { return }
             ErrorReporter.capture(error)
             resetState(error: error.localizedDescription)
         }
+    }
+
+    private func classifyRecentlyAddedHub(_ hub: PlexHub) -> Hub? {
+        guard hub.size > 0 else {
+            logger.debug(
+                "Exclude promoted hub id=\(hub.hubIdentifier, privacy: .public) title=\(hub.title, privacy: .public) reason=empty size=\(hub.size)"
+            )
+            return nil
+        }
+
+        let normalizedIdentifier = hub.hubIdentifier.lowercased()
+        let normalizedTitle = hub.title.lowercased()
+
+        if normalizedIdentifier.contains("recentlyadded") {
+            logger.debug(
+                "Include promoted hub id=\(hub.hubIdentifier, privacy: .public) title=\(hub.title, privacy: .public) reason=identifier_recentlyadded size=\(hub.size)"
+            )
+            return mapHub(hub)
+        }
+
+        if normalizedTitle.contains("recently") && normalizedTitle.contains("added") {
+            logger.debug(
+                "Include promoted hub id=\(hub.hubIdentifier, privacy: .public) title=\(hub.title, privacy: .public) reason=title_recently_added size=\(hub.size)"
+            )
+            return mapHub(hub)
+        }
+
+        let knownPromotedPatterns = [
+            "recently.added",
+            "recently_added",
+            "recently-added",
+            "home.recent",
+            "clips.recent",
+            "videos.recent",
+        ]
+
+        if knownPromotedPatterns.contains(where: normalizedIdentifier.contains) {
+            logger.debug(
+                "Include promoted hub id=\(hub.hubIdentifier, privacy: .public) title=\(hub.title, privacy: .public) reason=known_pattern size=\(hub.size)"
+            )
+            return mapHub(hub)
+        }
+
+        logger.debug(
+            "Exclude promoted hub id=\(hub.hubIdentifier, privacy: .public) title=\(hub.title, privacy: .public) reason=no_recently_added_match size=\(hub.size)"
+        )
+        return nil
     }
 
     private func mapHub(_ hub: PlexHub) -> Hub {
