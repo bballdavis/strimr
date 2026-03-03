@@ -11,6 +11,10 @@ struct LibraryBrowseView: View {
     /// (e.g. home-video / clip libraries).
     var overrideLayout: MediaCarousel.Layout? = nil
 
+    /// When `false`, the sort/filter/display-type control bar is hidden even
+    /// if the view model reports available display types. Defaults to `true`.
+    var showsControls: Bool = true
+
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var isLandscape: Bool { overrideLayout == .landscape }
@@ -30,8 +34,7 @@ struct LibraryBrowseView: View {
     }
 
     var body: some View {
-        // @Bindable var controls = viewModel.controls
-        // (controls are hidden in Plinx — see comment below)
+        @Bindable var controls = viewModel.controls
 
         GeometryReader { proxy in
             let singleColWidth = proxy.size.width - 32
@@ -41,19 +44,14 @@ struct LibraryBrowseView: View {
                         topContent
                     }
 
-                    // Plinx: The advanced sort/filter/folder controls are hidden
-                    // because they expose complexity that isn't kid-appropriate
-                    // (sorting by rating, folder browsing, display-type picker, etc).
-                    // Re-enable behind a parental gate in a future settings screen.
-                    //
-                    // if controls.hasDisplayTypes {
-                    //     LibraryBrowseControlsView(
-                    //         viewModel: controls,
-                    //         showsBackButton: viewModel.canNavigateBack,
-                    //         onNavigateBack: viewModel.navigateBack
-                    //     )
-                    //     .padding(.horizontal, 16)
-                    // }
+                    if showsControls && controls.hasDisplayTypes {
+                        LibraryBrowseControlsView(
+                            viewModel: controls,
+                            showsBackButton: viewModel.canNavigateBack,
+                            onNavigateBack: viewModel.navigateBack,
+                        )
+                        .padding(.horizontal, 16)
+                    }
 
                     if useSingleColumnList {
                         LazyVStack(spacing: 12) {

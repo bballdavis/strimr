@@ -22,7 +22,9 @@ final class SessionManager {
     @ObservationIgnored private let keychain = Keychain(service: Bundle.main.bundleIdentifier!)
     @ObservationIgnored private let tokenKey = "strimr.plex.authToken"
     @ObservationIgnored private let legacyServerIdDefaultsKey = "strimr.plex.serverIdentifier"
-    @ObservationIgnored private let defaultServerIdDefaultsKey = "plinx.plex.defaultServerIdentifier"
+    /// Key used by older Plinx builds (pre-rename). Checked only during migration.
+    @ObservationIgnored private let legacyPlinxServerIdDefaultsKey = "plinx.plex.defaultServerIdentifier"
+    @ObservationIgnored private let defaultServerIdDefaultsKey = "strimr.plex.defaultServerIdentifier"
     private(set) var defaultServerIdentifier: String?
 
     init(context: PlexAPIContext, libraryStore: LibraryStore) {
@@ -31,6 +33,11 @@ final class SessionManager {
         let defaults = UserDefaults.standard
         if let defaultServerId = defaults.string(forKey: defaultServerIdDefaultsKey) {
             defaultServerIdentifier = defaultServerId
+        } else if let plinxServerId = defaults.string(forKey: legacyPlinxServerIdDefaultsKey) {
+            // Migrate from the old Plinx-branded key used before this rename.
+            defaults.set(plinxServerId, forKey: defaultServerIdDefaultsKey)
+            defaults.removeObject(forKey: legacyPlinxServerIdDefaultsKey)
+            defaultServerIdentifier = plinxServerId
         } else if let legacyServerId = defaults.string(forKey: legacyServerIdDefaultsKey) {
             defaults.set(legacyServerId, forKey: defaultServerIdDefaultsKey)
             defaultServerIdentifier = legacyServerId
@@ -83,6 +90,7 @@ final class SessionManager {
         await clearSession()
         try? keychain.deleteValue(forKey: tokenKey)
         UserDefaults.standard.removeObject(forKey: legacyServerIdDefaultsKey)
+        UserDefaults.standard.removeObject(forKey: legacyPlinxServerIdDefaultsKey)
         UserDefaults.standard.removeObject(forKey: defaultServerIdDefaultsKey)
         defaultServerIdentifier = nil
         status = .signedOut
