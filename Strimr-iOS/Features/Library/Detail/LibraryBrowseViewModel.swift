@@ -5,7 +5,7 @@ import OSLog
 @MainActor
 @Observable
 final class LibraryBrowseViewModel {
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plinx", category: "LibraryBrowse")
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Strimr", category: "LibraryBrowse")
 
     private struct FolderBreadcrumb: Identifiable, Equatable {
         let id: String

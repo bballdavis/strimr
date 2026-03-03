@@ -14,7 +14,7 @@ final class HomeViewModel {
     @ObservationIgnored private let settingsManager: SettingsManager
     @ObservationIgnored private let libraryStore: LibraryStore
     @ObservationIgnored private var loadTask: Task<Void, Never>?
-    @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plinx", category: "HomePromotedHub")
+    @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Strimr", category: "Home")
 
     init(context: PlexAPIContext, settingsManager: SettingsManager, libraryStore: LibraryStore) {
         self.context = context

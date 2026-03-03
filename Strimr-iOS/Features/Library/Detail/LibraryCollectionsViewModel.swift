@@ -5,7 +5,7 @@ import OSLog
 @MainActor
 @Observable
 final class LibraryCollectionsViewModel {
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plinx", category: "LibraryCollectionsSafety")
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Strimr", category: "LibraryCollections")
 
     let library: Library
     var items: [MediaDisplayItem] = []
