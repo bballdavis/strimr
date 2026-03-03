@@ -17,15 +17,11 @@ final class MPVPlayerViewController: UIViewController {
     var hdrAvailable: Bool = false
     var hdrEnabled = false {
         didSet {
-            // FIXME: target-colorspace-hint does not support being changed at runtime.
-            // this option should be set as early as possible otherwise can cause issues
-            // not recommended to use this way.
-            guard let mpv else { return }
-            if hdrEnabled {
-                checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "yes"))
-            } else {
-                checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "no"))
-            }
+            // NOTE: target-colorspace-hint does not support being changed at runtime
+            // (setting it causes a deadlock / XPC API misuse via MoltenVK on the vo
+            // thread). The option is now set unconditionally during setupMpv() so
+            // the OS can always pass the display colorspace hint to libplacebo.
+            // Runtime changes are intentionally ignored.
         }
     }
 
@@ -82,10 +78,21 @@ final class MPVPlayerViewController: UIViewController {
         checkError(mpv_request_log_messages(mpv, "no"))
         checkError(mpv_set_option(mpv, "wid", MPV_FORMAT_INT64, &metalLayer))
         checkError(mpv_set_option_string(mpv, "vo", "gpu-next"))
-        checkError(mpv_set_option_string(mpv, "gpu-api", "vulkan"))
-        checkError(mpv_set_option_string(mpv, "gpu-context", "moltenvk"))
-        checkError(mpv_set_option_string(mpv, "hwdec", "videotoolbox"))
+        #if targetEnvironment(simulator)
+            // Avoid forcing Vulkan/MoltenVK on Simulator. Let mpv pick the
+            // safest available backend to prevent XPC API misuse crashes in
+            // MTLSimDriver when handling certain high-bandwidth frame uploads.
+            checkError(mpv_set_option_string(mpv, "hwdec", "no"))
+        #else
+            checkError(mpv_set_option_string(mpv, "gpu-api", "vulkan"))
+            checkError(mpv_set_option_string(mpv, "gpu-context", "moltenvk"))
+            checkError(mpv_set_option_string(mpv, "hwdec", "videotoolbox"))
+        #endif
         checkError(mpv_set_option_string(mpv, "video-rotate", "no"))
+        // Always enable display colorspace hinting so libplacebo can pass through
+        // HDR content when the display supports it. Setting this at init time is
+        // safe; runtime changes are ignored (see hdrEnabled.didSet).
+        checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "yes"))
         let subtitleScale = Double(options.subtitleScale) / 100.0
         let scaleString = String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), subtitleScale)
         checkError(mpv_set_option_string(mpv, "sub-scale", scaleString))
