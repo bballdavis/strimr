@@ -3,7 +3,7 @@ import Foundation
 extension MediaItem {
     var isFullyWatched: Bool {
         switch type {
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             return (viewCount ?? 0) > 0
         case .show, .season:
             guard let leafCount, let viewedLeafCount, leafCount > 0 else {

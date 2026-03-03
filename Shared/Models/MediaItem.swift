@@ -50,7 +50,7 @@ struct MediaItem: Identifiable, Hashable {
 
     var secondaryLabel: String? {
         switch type {
-        case .movie:
+        case .movie, .clip:
             return year.map(String.init)
 
         case .show:
@@ -83,7 +83,7 @@ struct MediaItem: Identifiable, Hashable {
             grandparentRatingKey ?? parentRatingKey ?? id
         case .season:
             parentRatingKey ?? id
-        case .movie, .show:
+        case .movie, .show, .clip:
             id
         case .collection, .playlist, .unknown:
             id

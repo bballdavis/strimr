@@ -230,7 +230,7 @@ final class MediaDetailViewModel {
 
     var primaryActionTitle: String {
         switch media.type {
-        case .movie:
+        case .movie, .clip:
             hasProgress(for: media.mediaItem)
                 ? String(localized: "common.actions.resume")
                 : String(localized: "common.actions.play")
@@ -247,7 +247,7 @@ final class MediaDetailViewModel {
 
     var primaryActionDetail: String? {
         switch media.type {
-        case .movie:
+        case .movie, .clip:
             return timeLeftText(for: media.mediaItem)
         case .show:
             guard let onDeckItem else { return nil }
@@ -264,7 +264,7 @@ final class MediaDetailViewModel {
 
     var primaryActionProgress: Double? {
         switch media.type {
-        case .movie:
+        case .movie, .clip:
             return progressFraction(for: media.mediaItem)
         case .show:
             guard let onDeckItem else { return nil }
@@ -276,7 +276,7 @@ final class MediaDetailViewModel {
 
     var shouldShowPlayFromStartButton: Bool {
         switch media.type {
-        case .movie:
+        case .movie, .clip:
             hasProgress(for: media.mediaItem)
         case .show:
             hasProgress(for: onDeckItem)
@@ -287,7 +287,7 @@ final class MediaDetailViewModel {
 
     var primaryActionRatingKey: String? {
         switch media.type {
-        case .movie:
+        case .movie, .clip:
             media.id
         case .show:
             onDeckItem?.id
@@ -335,7 +335,7 @@ final class MediaDetailViewModel {
         guard let playableType = PlayableItemType(plexType: item.type) else { return false }
 
         switch playableType {
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             return (item.viewCount ?? 0) > 0
         case .show, .season:
             guard let leafCount = item.leafCount, let viewedLeafCount = item.viewedLeafCount else {
