@@ -21,11 +21,27 @@ final class SessionManager {
 
     @ObservationIgnored private let keychain = Keychain(service: Bundle.main.bundleIdentifier!)
     @ObservationIgnored private let tokenKey = "strimr.plex.authToken"
-    @ObservationIgnored private let serverIdDefaultsKey = "strimr.plex.serverIdentifier"
+    @ObservationIgnored private let legacyServerIdDefaultsKey = "strimr.plex.serverIdentifier"
+    /// Key used by older Plinx builds (pre-rename). Checked only during migration.
+    @ObservationIgnored private let legacyPlinxServerIdDefaultsKey = "plinx.plex.defaultServerIdentifier"
+    @ObservationIgnored private let defaultServerIdDefaultsKey = "strimr.plex.defaultServerIdentifier"
+    private(set) var defaultServerIdentifier: String?
 
     init(context: PlexAPIContext, libraryStore: LibraryStore) {
         self.context = context
         self.libraryStore = libraryStore
+        let defaults = UserDefaults.standard
+        if let defaultServerId = defaults.string(forKey: defaultServerIdDefaultsKey) {
+            defaultServerIdentifier = defaultServerId
+        } else if let plinxServerId = defaults.string(forKey: legacyPlinxServerIdDefaultsKey) {
+            // Migrate from the old Plinx-branded key used before this rename.
+            defaults.set(plinxServerId, forKey: defaultServerIdDefaultsKey)
+            defaults.removeObject(forKey: legacyPlinxServerIdDefaultsKey)
+            defaultServerIdentifier = plinxServerId
+        } else if let legacyServerId = defaults.string(forKey: legacyServerIdDefaultsKey) {
+            defaults.set(legacyServerId, forKey: defaultServerIdDefaultsKey)
+            defaultServerIdentifier = legacyServerId
+        }
         Task { await hydrate() }
     }
 
@@ -73,7 +89,10 @@ final class SessionManager {
     func signOut() async {
         await clearSession()
         try? keychain.deleteValue(forKey: tokenKey)
-        UserDefaults.standard.removeObject(forKey: serverIdDefaultsKey)
+        UserDefaults.standard.removeObject(forKey: legacyServerIdDefaultsKey)
+        UserDefaults.standard.removeObject(forKey: legacyPlinxServerIdDefaultsKey)
+        UserDefaults.standard.removeObject(forKey: defaultServerIdDefaultsKey)
+        defaultServerIdentifier = nil
         status = .signedOut
     }
 
@@ -102,11 +121,13 @@ final class SessionManager {
         }
     }
 
-    func selectServer(_ server: PlexCloudResource) async {
+    func selectServer(_ server: PlexCloudResource, setAsDefault: Bool? = nil) async {
         do {
             try await context.selectServer(server)
             plexServer = server
-            UserDefaults.standard.set(server.clientIdentifier, forKey: serverIdDefaultsKey)
+            if let setAsDefault {
+                updateDefaultServer(serverId: setAsDefault ? server.clientIdentifier : nil)
+            }
             if authToken != nil {
                 try? await libraryStore.reloadLibraries()
                 status = .ready
@@ -114,8 +135,16 @@ final class SessionManager {
         } catch {
             plexServer = nil
             context.removeServer()
-            UserDefaults.standard.removeObject(forKey: serverIdDefaultsKey)
             status = .needsServerSelection
+        }
+    }
+
+    func updateDefaultServer(serverId: String?) {
+        defaultServerIdentifier = serverId
+        if let serverId {
+            UserDefaults.standard.set(serverId, forKey: defaultServerIdDefaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: defaultServerIdDefaultsKey)
         }
     }
 
@@ -129,7 +158,6 @@ final class SessionManager {
         status = .needsServerSelection
         plexServer = nil
         context.removeServer()
-        UserDefaults.standard.removeObject(forKey: serverIdDefaultsKey)
     }
 
     private func bootstrapAuthenticatedSession(
@@ -157,8 +185,8 @@ final class SessionManager {
 
         let resources = try await resourcesRepo.getAvailableResources()
 
-        if let persistedServerId = UserDefaults.standard.string(forKey: serverIdDefaultsKey),
-           let server = resources.first(where: { $0.clientIdentifier == persistedServerId })
+          if let defaultServerIdentifier,
+              let server = resources.first(where: { $0.clientIdentifier == defaultServerIdentifier })
         {
             await selectServer(server)
         } else if resources.count == 1, let server = resources.first {
