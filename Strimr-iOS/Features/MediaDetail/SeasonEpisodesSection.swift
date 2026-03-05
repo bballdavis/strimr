@@ -78,9 +78,10 @@ struct SeasonEpisodesSection: View {
             }
         }
         .pickerStyle(.menu)
-        .tint(.brandSecondaryForeground)
-        .background(.brandSecondary)
-        .cornerRadius(12)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .tint(.brandSecondary)
+        .foregroundStyle(.brandSecondaryForeground)
     }
 
     @ViewBuilder

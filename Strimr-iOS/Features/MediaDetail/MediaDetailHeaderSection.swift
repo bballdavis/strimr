@@ -158,10 +158,6 @@ struct MediaDetailHeaderSection: View {
                 badge(text: runtime, systemImage: "clock")
             }
 
-            if let rating = viewModel.ratingText {
-                badge(text: rating, systemImage: "star.fill")
-            }
-
             if let contentRating = viewModel.media.contentRating {
                 badge(text: contentRating)
             }

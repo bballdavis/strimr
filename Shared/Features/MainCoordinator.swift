@@ -169,4 +169,20 @@ final class MainCoordinator: ObservableObject {
         isPresentingPlayer = false
         shouldResumeFromOffset = true
     }
+
+    func resetToRoot(for rootTab: Tab) {
+        switch rootTab {
+        case .home:
+            homePath = NavigationPath()
+        case .search:
+            searchPath = NavigationPath()
+        case .library, .libraryDetail:
+            libraryPath = NavigationPath()
+        case .more:
+            morePath = NavigationPath()
+        case .seerrDiscover:
+            seerrDiscoverPath = NavigationPath()
+        }
+    }
+
 }

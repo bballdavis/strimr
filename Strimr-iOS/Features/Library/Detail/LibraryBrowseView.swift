@@ -8,9 +8,17 @@ struct LibraryBrowseView: View {
     var overrideLayout: MediaCarousel.Layout? = nil
     var showsControls: Bool = true
 
+    private var resolvedLayout: MediaCarousel.Layout {
+        overrideLayout ?? .portrait
+    }
+
+    private var cardWidth: CGFloat {
+        resolvedLayout == .landscape ? 200 : 112
+    }
+
     private var gridColumns: [GridItem] {
         [
-            GridItem(.adaptive(minimum: 112, maximum: 112), spacing: 12, alignment: .top),
+            GridItem(.adaptive(minimum: cardWidth, maximum: cardWidth), spacing: 12, alignment: .top),
         ]
     }
 
@@ -38,14 +46,23 @@ struct LibraryBrowseView: View {
                         Group {
                             switch item {
                             case let .media(media):
-                                PortraitMediaCard(media: media, width: 112, showsLabels: true) {
-                                    onSelectMedia(media)
+                                if resolvedLayout == .landscape {
+                                    LandscapeMediaCard(media: media, width: cardWidth, showsLabels: true) {
+                                        onSelectMedia(media)
+                                    }
+                                    .simultaneousGesture(LongPressGesture().onEnded { _ in
+                                        onLongPressMedia(media)
+                                    })
+                                } else {
+                                    PortraitMediaCard(media: media, width: cardWidth, showsLabels: true) {
+                                        onSelectMedia(media)
+                                    }
+                                    .simultaneousGesture(LongPressGesture().onEnded { _ in
+                                        onLongPressMedia(media)
+                                    })
                                 }
-                                .simultaneousGesture(LongPressGesture().onEnded { _ in
-                                    onLongPressMedia(media)
-                                })
                             case let .folder(folder):
-                                FolderCard(title: folder.title, width: 112, showsLabels: true) {
+                                FolderCard(title: folder.title, width: cardWidth, showsLabels: true) {
                                     viewModel.enterFolder(folder)
                                 }
                             }
