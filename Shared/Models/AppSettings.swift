@@ -1,18 +1,5 @@
 import Foundation
 
-struct LibraryViewSettings: Codable, Equatable {
-    var hiddenRecommendSectionIds: [String] = []
-    var recommendSectionOrder: [String] = []
-
-    init() {}
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        hiddenRecommendSectionIds = try container.decodeIfPresent([String].self, forKey: .hiddenRecommendSectionIds) ?? []
-        recommendSectionOrder = try container.decodeIfPresent([String].self, forKey: .recommendSectionOrder) ?? []
-    }
-}
-
 struct PlaybackSettings: Codable, Equatable {
     var autoPlayNextEpisode = true
     var seekBackwardSeconds = 10
@@ -35,10 +22,10 @@ struct PlaybackSettings: Codable, Equatable {
 struct InterfaceSettings: Codable, Equatable {
     var hiddenLibraryIds: [String] = []
     var navigationLibraryIds: [String] = []
+    // Plinx fork: default false — collections are an opt-in feature for kids' context.
     var displayCollections = false
     var displayPlaylists = true
     var displaySeerrDiscoverTab = true
-    var libraryViewSettingsByLibraryId: [String: LibraryViewSettings] = [:]
 
     init() {}
 
@@ -49,7 +36,6 @@ struct InterfaceSettings: Codable, Equatable {
         displayCollections = try container.decodeIfPresent(Bool.self, forKey: .displayCollections) ?? false
         displayPlaylists = try container.decodeIfPresent(Bool.self, forKey: .displayPlaylists) ?? true
         displaySeerrDiscoverTab = try container.decodeIfPresent(Bool.self, forKey: .displaySeerrDiscoverTab) ?? true
-        libraryViewSettingsByLibraryId = try container.decodeIfPresent([String: LibraryViewSettings].self, forKey: .libraryViewSettingsByLibraryId) ?? [:]
     }
 }
 

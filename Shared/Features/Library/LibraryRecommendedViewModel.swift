@@ -8,11 +8,7 @@ final class LibraryRecommendedViewModel {
     var hubs: [Hub] = []
     var isLoading = false
     var errorMessage: String?
-
-    /// Optional post-fetch filter applied to each hub.
-    /// Return `nil` to remove a hub entirely; return the (possibly pruned) hub
-    /// to keep it. Defaults to `nil` (no filtering).
-    var hubFilter: ((Hub) -> Hub?)? = nil
+    var hubFilter: ((Hub) -> Hub?)?
 
     @ObservationIgnored private let context: PlexAPIContext
 
@@ -47,11 +43,11 @@ final class LibraryRecommendedViewModel {
         do {
             let response = try await hubRepository.getSectionHubs(sectionId: sectionId)
             let plexHubs = response.mediaContainer.hub ?? []
-            let rawHubs = plexHubs.map(Hub.init)
-            if let filter = hubFilter {
-                hubs = rawHubs.compactMap(filter)
+            let mappedHubs = plexHubs.map(Hub.init)
+            if let hubFilter {
+                hubs = mappedHubs.compactMap(hubFilter)
             } else {
-                hubs = rawHubs
+                hubs = mappedHubs
             }
         } catch {
             ErrorReporter.capture(error)

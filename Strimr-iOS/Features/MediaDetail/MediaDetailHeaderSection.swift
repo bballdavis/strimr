@@ -92,7 +92,6 @@ struct MediaDetailHeaderSection: View {
                 )
             }
         }
-
     }
 
     private var headerSection: some View {
@@ -137,31 +136,6 @@ struct MediaDetailHeaderSection: View {
                 Text(tertiary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var titleBannerSection: some View {
-        Group {
-            if let titleBannerURL = viewModel.titleBannerURL {
-                AsyncImage(url: titleBannerURL) { phase in
-                    switch phase {
-                    case let .success(image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 72)
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    case .empty:
-                        EmptyView()
-                    case .failure:
-                        EmptyView()
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
             }
         }
     }
@@ -251,7 +225,6 @@ struct MediaDetailHeaderSection: View {
 
     private func ratingIconAssetName(_ rating: MediaExternalRating) -> String {
         let norm = normalizedRatingProvider(rating.provider)
-        // RT audience gets a distinct asset name (falls back to popcorn SF symbol)
         if (norm == "rottentomatoes" || norm == "rt") && rating.isAudience {
             return "rating.rt.audience"
         }
@@ -461,6 +434,27 @@ struct MediaDetailHeaderSection: View {
         .accessibilityLabel(Text("media.detail.playFromStart"))
     }
 
+    private var shuffleButton: some View {
+        VStack(spacing: 2) {
+            Button(action: handleShuffle) {
+                Image(systemName: "shuffle")
+                    .font(.headline.weight(.semibold))
+            }
+            .frame(width: 48, height: 44)
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .tint(.brandSecondary)
+
+            Text("common.actions.shuffle")
+                .font(.caption2)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: 48)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .accessibilityLabel(Text("common.actions.shuffle"))
+    }
+
     private var watchToggleButton: some View {
         VStack(spacing: 2) {
             Button {
@@ -470,7 +464,7 @@ struct MediaDetailHeaderSection: View {
             } label: {
                 if viewModel.isUpdatingWatchStatus {
                     ProgressView()
-                        .tint(.brandSecondaryForeground)
+                        .tint(Color.accentColor)
                 } else {
                     Image(systemName: viewModel.watchActionIcon)
                         .font(.headline.weight(.semibold))
@@ -515,24 +509,16 @@ struct MediaDetailHeaderSection: View {
                         .font(.headline.weight(.semibold))
                 }
             }
-            .foregroundStyle(Color.accentColor)
             .frame(width: 48, height: 44)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
-            )
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .tint(.brandSecondary)
             .disabled(viewModel.isLoading || viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus)
 
             Text(viewModel.watchlistActionTitle)
                 .font(.caption2)
                 .foregroundStyle(.primary)
-                .frame(width: 82, alignment: .center)
-                .frame(minHeight: 28, alignment: .center)
+                .frame(maxWidth: 48)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
@@ -545,7 +531,7 @@ struct MediaDetailHeaderSection: View {
             } label: {
                 if isDownloadInProgress {
                     ProgressView()
-                        .tint(.brandSecondaryForeground)
+                        .tint(Color.accentColor)
                 } else {
                     Image(systemName: downloadIconName)
                         .font(.headline.weight(.semibold))

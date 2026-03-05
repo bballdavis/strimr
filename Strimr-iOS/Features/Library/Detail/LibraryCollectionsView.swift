@@ -6,44 +6,28 @@ struct LibraryCollectionsView: View {
     var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
     var topContent: AnyView? = nil
 
-    /// When `.landscape`, renders wider cells with LandscapeMediaCard instead
-    /// of portrait cards. Used by Other Video libraries.
-    var overrideLayout: MediaCarousel.Layout? = nil
-
-    private var isLandscape: Bool { overrideLayout == .landscape }
-
     private var gridColumns: [GridItem] {
-        if isLandscape {
-            [GridItem(.adaptive(minimum: 190, maximum: 190), spacing: 12)]
-        } else {
-            [GridItem(.adaptive(minimum: 112, maximum: 112), spacing: 12)]
-        }
+        [
+            GridItem(.adaptive(minimum: 112, maximum: 112), spacing: 12),
+        ]
     }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 if let topContent {
                     topContent
+                        .padding(.horizontal, 16)
                 }
 
                 LazyVGrid(columns: gridColumns, spacing: 16) {
                     ForEach(viewModel.items) { media in
-                        Group {
-                            if isLandscape {
-                                LandscapeMediaCard(media: media, width: 190, showsLabels: true) {
-                                    onSelectMedia(media)
-                                } onLongPress: {
-                                    onLongPressMedia(media)
-                                }
-                            } else {
-                                PortraitMediaCard(media: media, width: 112, showsLabels: true) {
-                                    onSelectMedia(media)
-                                } onLongPress: {
-                                    onLongPressMedia(media)
-                                }
-                            }
+                        PortraitMediaCard(media: media, width: 112, showsLabels: true) {
+                            onSelectMedia(media)
                         }
+                        .simultaneousGesture(LongPressGesture().onEnded { _ in
+                            onLongPressMedia(media)
+                        })
                         .task {
                             if media == viewModel.items.last {
                                 await viewModel.loadMore()
@@ -56,8 +40,8 @@ struct LibraryCollectionsView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
+                .padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
             .padding(.top, 16)
         }
         .overlay {

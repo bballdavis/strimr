@@ -5,67 +5,83 @@ struct LibraryBrowseView: View {
     let onSelectMedia: (MediaDisplayItem) -> Void
     var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
     var topContent: AnyView? = nil
-
-    /// When `.landscape`, renders wider cells with LandscapeMediaCard instead of
-    /// portrait poster cards. Useful for libraries whose thumbnails are 16:9
-    /// (e.g. home-video / clip libraries).
     var overrideLayout: MediaCarousel.Layout? = nil
-
-    /// When `false`, the sort/filter/display-type control bar is hidden even
-    /// if the view model reports available display types. Defaults to `true`.
     var showsControls: Bool = true
 
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var resolvedLayout: MediaCarousel.Layout {
+        overrideLayout ?? .portrait
+    }
 
-    private var isLandscape: Bool { overrideLayout == .landscape }
-
-    /// On iPhone (compact) with a landscape-type library, use a single full-width
-    /// row per item. On iPad (regular), keep the adaptive multi-column grid.
-    private var useSingleColumnList: Bool {
-        isLandscape && sizeClass == .compact
+    private var cardWidth: CGFloat {
+        resolvedLayout == .landscape ? 200 : 112
     }
 
     private var gridColumns: [GridItem] {
-        if isLandscape {
-            return [GridItem(.adaptive(minimum: 190, maximum: 190), spacing: 12)]
-        } else {
-            return [GridItem(.adaptive(minimum: 112, maximum: 112), spacing: 12, alignment: .top)]
-        }
+        [
+            GridItem(.adaptive(minimum: cardWidth, maximum: cardWidth), spacing: 12, alignment: .top),
+        ]
     }
 
     var body: some View {
         @Bindable var controls = viewModel.controls
 
-        GeometryReader { proxy in
-            let singleColWidth = proxy.size.width - 32
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let topContent {
-                        topContent
-                    }
-
-                    if showsControls && controls.hasDisplayTypes {
-                        LibraryBrowseControlsView(
-                            viewModel: controls,
-                            showsBackButton: viewModel.canNavigateBack,
-                            onNavigateBack: viewModel.navigateBack,
-                        )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let topContent {
+                    topContent
                         .padding(.horizontal, 16)
+                }
+
+                if showsControls, controls.hasDisplayTypes {
+                    LibraryBrowseControlsView(
+                        viewModel: controls,
+                        showsBackButton: viewModel.canNavigateBack,
+                        onNavigateBack: viewModel.navigateBack,
+                    )
+                    .padding(.horizontal, 16)
+                }
+
+                LazyVGrid(columns: gridColumns, spacing: 16) {
+                    ForEach(Array(viewModel.browseItems.enumerated()), id: \.element.id) { index, item in
+                        Group {
+                            switch item {
+                            case let .media(media):
+                                if resolvedLayout == .landscape {
+                                    LandscapeMediaCard(media: media, width: cardWidth, showsLabels: true) {
+                                        onSelectMedia(media)
+                                    }
+                                    .simultaneousGesture(LongPressGesture().onEnded { _ in
+                                        onLongPressMedia(media)
+                                    })
+                                } else {
+                                    PortraitMediaCard(media: media, width: cardWidth, showsLabels: true) {
+                                        onSelectMedia(media)
+                                    }
+                                    .simultaneousGesture(LongPressGesture().onEnded { _ in
+                                        onLongPressMedia(media)
+                                    })
+                                }
+                            case let .folder(folder):
+                                FolderCard(title: folder.title, width: cardWidth, showsLabels: true) {
+                                    viewModel.enterFolder(folder)
+                                }
+                            }
+                        }
+                        .task {
+                            if index == viewModel.browseItems.count - 1 {
+                                await viewModel.loadMore()
+                            }
+                        }
                     }
 
-                    if useSingleColumnList {
-                        LazyVStack(spacing: 12) {
-                            browseContent(width: singleColWidth)
-                        }
-                    } else {
-                        LazyVGrid(columns: gridColumns, spacing: 16) {
-                            browseContent(width: isLandscape ? 190 : 112)
-                        }
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 16)
             }
+            .padding(.top, 16)
         }
         .overlay {
             if viewModel.isLoading, viewModel.browseItems.isEmpty {
@@ -87,44 +103,6 @@ struct LibraryBrowseView: View {
         }
         .task {
             await viewModel.load()
-        }
-    }
-
-    @ViewBuilder
-    private func browseContent(width: CGFloat) -> some View {
-        ForEach(Array(viewModel.browseItems.enumerated()), id: \.offset) { index, item in
-            Group {
-                switch item {
-                case let .media(media):
-                    if isLandscape {
-                        LandscapeMediaCard(media: media, width: width, showsLabels: true) {
-                            onSelectMedia(media)
-                        } onLongPress: {
-                            onLongPressMedia(media)
-                        }
-                    } else {
-                        PortraitMediaCard(media: media, width: width, showsLabels: true) {
-                            onSelectMedia(media)
-                        } onLongPress: {
-                            onLongPressMedia(media)
-                        }
-                    }
-                case let .folder(folder):
-                    FolderCard(title: folder.title, width: width, showsLabels: true) {
-                        viewModel.enterFolder(folder)
-                    }
-                }
-            }
-            .task {
-                if index == viewModel.browseItems.count - 1 {
-                    await viewModel.loadMore()
-                }
-            }
-        }
-
-        if viewModel.isLoadingMore {
-            ProgressView()
-                .frame(maxWidth: .infinity)
         }
     }
 }

@@ -5,30 +5,11 @@ struct LibraryRecommendedView: View {
     let onSelectMedia: (MediaDisplayItem) -> Void
     var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
     var topContent: AnyView? = nil
-    @Environment(SettingsManager.self) private var settingsManager
-
-    /// When set, overrides the per-hub landscape-identifier logic and forces
-    /// every carousel to use the specified layout. Useful when the consuming
-    /// view already knows the library's content type (e.g. "other videos"
-    /// libraries that should always show letterbox thumbnails).
-    var overrideLayout: MediaCarousel.Layout? = nil
+    var overrideLayout: ((Hub) -> MediaCarousel.Layout?)? = nil
 
     private let landscapeHubIdentifiers: [String] = [
         "inprogress",
     ]
-
-    private var visibleHubs: [Hub] {
-        let hubs = viewModel.hubs
-        guard !hubs.isEmpty else { return [] }
-
-        let availableIds = hubs.map(\.id)
-        let visibleIds = settingsManager.resolvedRecommendSectionIds(
-            for: viewModel.library.id,
-            availableSectionIds: availableIds
-        )
-        let hubById = Dictionary(uniqueKeysWithValues: hubs.map { ($0.id, $0) })
-        return visibleIds.compactMap { hubById[$0] }
-    }
 
     var body: some View {
         ScrollView {
@@ -37,7 +18,7 @@ struct LibraryRecommendedView: View {
                     topContent
                 }
 
-                ForEach(visibleHubs) { hub in
+                ForEach(viewModel.hubs) { hub in
                     if hub.hasItems {
                         MediaHubSection(title: hub.title) {
                             carousel(for: hub)
@@ -68,13 +49,14 @@ struct LibraryRecommendedView: View {
 
     @ViewBuilder
     private func carousel(for hub: Hub) -> some View {
-        if shouldUseLandscape(for: hub) {
+        let resolvedLayout = overrideLayout?(hub) ?? (shouldUseLandscape(for: hub) ? .landscape : .portrait)
+        if resolvedLayout == .landscape {
             MediaCarousel(
                 layout: .landscape,
                 items: hub.items,
                 showsLabels: true,
                 onSelectMedia: onSelectMedia,
-                onLongPressMedia: onLongPressMedia,
+                onLongPressMedia: onLongPressMedia
             )
         } else {
             MediaCarousel(
@@ -82,13 +64,12 @@ struct LibraryRecommendedView: View {
                 items: hub.items,
                 showsLabels: true,
                 onSelectMedia: onSelectMedia,
-                onLongPressMedia: onLongPressMedia,
+                onLongPressMedia: onLongPressMedia
             )
         }
     }
 
     private func shouldUseLandscape(for hub: Hub) -> Bool {
-        if let override = overrideLayout { return override == .landscape }
         let identifier = hub.id.lowercased()
         return landscapeHubIdentifiers.contains { identifier.contains($0) }
     }

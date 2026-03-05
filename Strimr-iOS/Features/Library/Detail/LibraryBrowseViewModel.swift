@@ -1,12 +1,9 @@
 import Foundation
 import Observation
-import OSLog
 
 @MainActor
 @Observable
 final class LibraryBrowseViewModel {
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Strimr", category: "LibraryBrowse")
-
     private struct FolderBreadcrumb: Identifiable, Equatable {
         let id: String
         let title: String
@@ -19,15 +16,12 @@ final class LibraryBrowseViewModel {
     var isLoadingMore = false
     var errorMessage: String?
     var controls: LibraryBrowseControlsViewModel
+    var itemFilter: ((MediaDisplayItem) -> Bool)?
     private var folderStack: [FolderBreadcrumb] = []
 
     private var reachedEnd = false
     private var hasLoadedMeta = false
     private var nextPageStart = 0
-
-    /// Optional per-item filter applied after each page loads.
-    /// Return `true` to keep an item. Defaults to `nil` (no filtering).
-    var itemFilter: ((MediaDisplayItem) -> Bool)? = nil
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
@@ -110,17 +104,11 @@ final class LibraryBrowseViewModel {
         do {
             let start = reset ? 0 : nextPageStart
             let endpoint = resolvedEndpoint(sectionId: sectionId)
-            var baseQueryItems = endpoint.queryItems
-            if baseQueryItems.first(where: { $0.name == "type" }) == nil,
-               let typeValue = defaultBrowseTypeQueryValue
-            {
-                baseQueryItems.append(URLQueryItem(name: "type", value: typeValue))
-            }
-            
+            let includeCollections = settingsManager.interface.displayCollections ? true : nil
             let includeMeta = !hasLoadedMeta
             let queryItems = controls.buildQueryItems(
-                baseItems: baseQueryItems,
-                includeCollections: settingsManager.interface.displayCollections,
+                baseItems: endpoint.queryItems,
+                includeCollections: includeCollections,
                 includeMeta: includeMeta,
             )
 
@@ -137,21 +125,7 @@ final class LibraryBrowseViewModel {
 
             let rawItems = (response.mediaContainer.metadata ?? [])
                 .compactMap(mapBrowseItem)
-            
-            let newItems: [LibraryBrowseItem] = {
-                if let filter = itemFilter {
-                    return rawItems.filter { item in
-                        switch item {
-                        case .media(let media):
-                            return filter(media)
-                        case .folder:
-                            return true
-                        }
-                    }
-                }
-                return rawItems
-            }()
-
+            let newItems = filterBrowseItems(rawItems)
             let total = response.mediaContainer.totalSize ?? (start + rawItems.count)
 
             if reset {
@@ -160,25 +134,13 @@ final class LibraryBrowseViewModel {
             } else {
                 let existingIDs = Set(browseItems.map(\.id))
                 let deduped = newItems.filter { !existingIDs.contains($0.id) }
-                let duplicateCount = newItems.count - deduped.count
-                if duplicateCount > 0 {
-                    Self.logger.debug(
-                        "Dedup browse append duplicates=\(duplicateCount, privacy: .public) start=\(start, privacy: .public) incoming=\(newItems.count, privacy: .public)"
-                    )
-                }
                 browseItems.append(contentsOf: deduped)
                 nextPageStart = start + rawItems.count
             }
 
             reachedEnd = nextPageStart >= total || rawItems.isEmpty
-            Self.logger.debug(
-                "Browse page loaded reset=\(reset, privacy: .public) start=\(start, privacy: .public) raw=\(rawItems.count, privacy: .public) kept=\(newItems.count, privacy: .public) totalItems=\(self.browseItems.count, privacy: .public) total=\(total, privacy: .public) reachedEnd=\(self.reachedEnd, privacy: .public)"
-            )
 
-            // Auto-advance pagination: when every item on this page was removed
-            // by the client-side itemFilter (e.g. safety rating filter), fetch
-            // the next page immediately so the UI never shows an empty state
-            // while allowed content exists on later pages.
+            // Keep paging when a full server page is removed by client-side filters.
             if itemFilter != nil, !rawItems.isEmpty, newItems.isEmpty, !reachedEnd {
                 await fetch(reset: false)
             }
@@ -188,7 +150,6 @@ final class LibraryBrowseViewModel {
             } else {
                 errorMessage = error.localizedDescription
             }
-            Self.logger.error("Browse fetch failed reset=\(reset, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -196,22 +157,30 @@ final class LibraryBrowseViewModel {
         if let currentFolderEndpoint {
             return currentFolderEndpoint
         }
+        if let selectedDisplayType = controls.selectedDisplayType,
+           let endpoint = PlexEndpoint(key: selectedDisplayType.key)
+        {
+            return endpoint
+        }
+
         let path = "/library/sections/\(sectionId)/all"
-        return PlexEndpoint(path: path, queryItems: [])
+        let typeValue = defaultTypeQueryValue
+        let queryItems = [URLQueryItem.make("type", typeValue)].compactMap(\.self)
+        return PlexEndpoint(path: path, queryItems: queryItems)
     }
 
     private var currentFolderEndpoint: PlexEndpoint? {
         folderStack.last?.endpoint
     }
 
-    private var defaultBrowseTypeQueryValue: String? {
+    private var defaultTypeQueryValue: String? {
         switch library.type {
         case .movie where !library.isNoneAgentLibrary:
-            return "1"
+            "1"
         case .show:
-            return "2"
+            "2"
         default:
-            return nil
+            nil
         }
     }
 
@@ -219,9 +188,6 @@ final class LibraryBrowseViewModel {
         switch metadata {
         case let .item(plexItem):
             guard let mediaItem = MediaDisplayItem(plexItem: plexItem) else { return nil }
-            if (library.type == .movie || library.type == .show), case .collection = mediaItem {
-                return nil
-            }
             return .media(mediaItem)
         case let .folder(folder):
             return .folder(
@@ -231,6 +197,18 @@ final class LibraryBrowseViewModel {
                     title: folder.title,
                 ),
             )
+        }
+    }
+
+    private func filterBrowseItems(_ items: [LibraryBrowseItem]) -> [LibraryBrowseItem] {
+        guard let itemFilter else { return items }
+        return items.filter { item in
+            switch item {
+            case let .media(media):
+                return itemFilter(media)
+            case .folder:
+                return true
+            }
         }
     }
 

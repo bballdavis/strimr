@@ -495,6 +495,7 @@ final class MediaDetailViewModel {
             titleBannerURL = nil
             return
         }
+
         titleLogoURL = images.first { image in
             image.type.localizedCaseInsensitiveContains("logo")
         }.flatMap { image in
@@ -557,7 +558,7 @@ final class MediaDetailViewModel {
         let value = imageIdentifier.lowercased()
         if value.contains("imdb") { return "IMDb" }
         if value.contains("rotten") || value.contains("tomato") || value == "rt" { return "Rotten Tomatoes" }
-        if value.contains("tvdb") { return "TVDB" }
+        if value.contains("tvdb") || value.contains("thetvdb") { return "TVDB" }
         if value.contains("tmdb") || value.contains("themoviedb") { return "TMDB" }
         return nil
     }
