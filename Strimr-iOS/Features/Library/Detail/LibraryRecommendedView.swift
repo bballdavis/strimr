@@ -56,6 +56,7 @@ struct LibraryRecommendedView: View {
                 items: hub.items,
                 showsLabels: true,
                 onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia
             )
         } else {
             MediaCarousel(
@@ -63,6 +64,7 @@ struct LibraryRecommendedView: View {
                 items: hub.items,
                 showsLabels: true,
                 onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia
             )
         }
     }

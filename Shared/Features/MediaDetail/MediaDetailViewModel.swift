@@ -2,6 +2,13 @@ import Foundation
 import Observation
 import SwiftUI
 
+struct MediaExternalRating: Identifiable, Hashable {
+    let id: String
+    let provider: String
+    let value: String
+    var isAudience: Bool = false
+}
+
 @MainActor
 @Observable
 final class MediaDetailViewModel {
@@ -10,6 +17,9 @@ final class MediaDetailViewModel {
     var media: PlayableMediaItem
     var onDeckItem: MediaItem?
     var heroImageURL: URL?
+    var titleLogoURL: URL?
+    var titleBannerURL: URL?
+    var externalRatings: [MediaExternalRating] = []
     var isLoading = false
     var errorMessage: String?
     var backdropGradient: [Color] = []
@@ -64,6 +74,8 @@ final class MediaDetailViewModel {
             {
                 media = playable
                 cast = castMembers(from: item)
+                resolveBrandingAssets(from: item)
+                resolveExternalRatings(from: item)
                 resolveArtwork()
                 resolveGradient()
             }
@@ -158,8 +170,15 @@ final class MediaDetailViewModel {
 
         heroImageURL = media.artPath.flatMap {
             imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
+        } ?? media.mediaItem.grandparentArtPath.flatMap {
+            imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
+        } ?? media.mediaItem.parentThumbPath.flatMap {
+            imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
         } ?? media.thumbPath.flatMap {
             imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
+        } ?? titleBannerURL
+        if titleBannerURL == nil {
+            titleBannerURL = heroImageURL
         }
         resolveGradient()
     }
@@ -467,6 +486,127 @@ final class MediaDetailViewModel {
                 thumbPath: role.thumb,
             )
         }
+    }
+
+    private func resolveBrandingAssets(from item: PlexItem) {
+        let images = item.images ?? []
+        guard let imageRepository = try? ImageRepository(context: context) else {
+            titleLogoURL = nil
+            titleBannerURL = nil
+            return
+        }
+
+        titleLogoURL = images.first { image in
+            image.type.localizedCaseInsensitiveContains("logo")
+        }.flatMap { image in
+            imageRepository.transcodeImageURL(path: image.url.path, width: 400, height: 200)
+        }
+
+        titleBannerURL = images.first { image in
+            image.type.localizedCaseInsensitiveContains("banner")
+        }.flatMap { image in
+            imageRepository.transcodeImageURL(path: image.url.path, width: 800, height: 160)
+        }
+    }
+
+    private func resolveExternalRatings(from item: PlexItem) {
+        var ratingsByID: [String: MediaExternalRating] = [:]
+
+        func addRating(provider: String, value: Double, isAudience: Bool) {
+            guard isSupportedProvider(provider) else { return }
+            let providerID = normalizedProvider(provider)
+            let id = "\(providerID)-\(isAudience ? "audience" : "critic")"
+            guard ratingsByID[id] == nil else { return }
+            ratingsByID[id] = MediaExternalRating(
+                id: id,
+                provider: provider,
+                value: formattedRatingValue(value, provider: provider),
+                isAudience: isAudience
+            )
+        }
+
+        for rating in item.ratings ?? [] {
+            guard let value = rating.value else { continue }
+            guard let provider = providerName(from: rating.image) ?? providerName(from: rating.type) else { continue }
+            let isAudience = isAudienceRatingSource(rating.image) || isAudienceRatingSource(rating.type)
+            addRating(provider: provider, value: value, isAudience: isAudience)
+        }
+
+        if let value = item.rating,
+           let provider = providerName(from: item.ratingImage)
+        {
+            addRating(provider: provider, value: value, isAudience: false)
+        }
+
+        if let value = item.audienceRating,
+           let provider = providerName(from: item.audienceRatingImage)
+        {
+            addRating(provider: provider, value: value, isAudience: true)
+        }
+
+        externalRatings = ratingsByID.values.sorted { lhs, rhs in
+            let lhsPriority = ratingSortPriority(lhs)
+            let rhsPriority = ratingSortPriority(rhs)
+            if lhsPriority != rhsPriority { return lhsPriority < rhsPriority }
+            if lhs.isAudience != rhs.isAudience { return lhs.isAudience == false }
+            return lhs.provider < rhs.provider
+        }
+    }
+
+    private func providerName(from imageIdentifier: String?) -> String? {
+        guard let imageIdentifier else { return nil }
+        let value = imageIdentifier.lowercased()
+        if value.contains("imdb") { return "IMDb" }
+        if value.contains("rotten") || value.contains("tomato") || value == "rt" { return "Rotten Tomatoes" }
+        if value.contains("tvdb") || value.contains("thetvdb") { return "TVDB" }
+        if value.contains("tmdb") || value.contains("themoviedb") { return "TMDB" }
+        return nil
+    }
+
+    private func isAudienceRatingSource(_ source: String?) -> Bool {
+        guard let source else { return false }
+        let value = source.lowercased()
+        return value.contains("audience") || value.contains("user") || value.contains("popcorn")
+    }
+
+    private func normalizedProvider(_ provider: String) -> String {
+        provider
+            .lowercased()
+            .replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
+    }
+
+    private func isSupportedProvider(_ provider: String) -> Bool {
+        switch normalizedProvider(provider) {
+        case "imdb", "rottentomatoes", "rt", "tmdb", "themoviedatabase", "themoviedb", "tvdb":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func ratingSortPriority(_ rating: MediaExternalRating) -> Int {
+        let provider = normalizedProvider(rating.provider)
+        switch provider {
+        case "rottentomatoes", "rt": return rating.isAudience ? 1 : 0
+        case "imdb": return 2
+        case "tmdb", "themoviedatabase", "themoviedb": return 3
+        case "tvdb": return 4
+        default: return 9
+        }
+    }
+
+    private func formattedRatingValue(_ rawValue: Double, provider: String) -> String {
+        let providerID = normalizedProvider(provider)
+        if providerID == "rottentomatoes" || providerID == "rt" {
+            let percentage = rawValue <= 10 ? rawValue * 10 : rawValue
+            return "\(Int(percentage.rounded()))%"
+        }
+
+        if providerID == "imdb" {
+            return String(format: "%.1f", rawValue)
+        }
+
+        return String(format: "%.1f", rawValue)
     }
 
     func loadRelatedHubs() async {

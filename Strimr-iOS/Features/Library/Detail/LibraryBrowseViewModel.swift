@@ -21,6 +21,7 @@ final class LibraryBrowseViewModel {
 
     private var reachedEnd = false
     private var hasLoadedMeta = false
+    private var nextPageStart = 0
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
@@ -74,6 +75,7 @@ final class LibraryBrowseViewModel {
 
     func refresh() async {
         reachedEnd = false
+        nextPageStart = 0
         browseItems = []
         await fetch(reset: true)
     }
@@ -100,7 +102,7 @@ final class LibraryBrowseViewModel {
         }
 
         do {
-            let start = reset ? 0 : browseItems.count
+            let start = reset ? 0 : nextPageStart
             let endpoint = resolvedEndpoint(sectionId: sectionId)
             let includeCollections = settingsManager.interface.displayCollections ? true : nil
             let includeMeta = !hasLoadedMeta
@@ -121,17 +123,27 @@ final class LibraryBrowseViewModel {
                 hasLoadedMeta = true
             }
 
-            let newItems = (response.mediaContainer.metadata ?? [])
+            let rawItems = (response.mediaContainer.metadata ?? [])
                 .compactMap(mapBrowseItem)
-            let total = response.mediaContainer.totalSize ?? (start + newItems.count)
+            let newItems = filterBrowseItems(rawItems)
+            let total = response.mediaContainer.totalSize ?? (start + rawItems.count)
 
             if reset {
                 browseItems = newItems
+                nextPageStart = rawItems.count
             } else {
-                browseItems.append(contentsOf: newItems)
+                let existingIDs = Set(browseItems.map(\.id))
+                let deduped = newItems.filter { !existingIDs.contains($0.id) }
+                browseItems.append(contentsOf: deduped)
+                nextPageStart = start + rawItems.count
             }
 
-            reachedEnd = browseItems.count >= total || newItems.isEmpty
+            reachedEnd = nextPageStart >= total || rawItems.isEmpty
+
+            // Keep paging when a full server page is removed by client-side filters.
+            if itemFilter != nil, !rawItems.isEmpty, newItems.isEmpty, !reachedEnd {
+                await fetch(reset: false)
+            }
         } catch {
             if reset {
                 resetState(error: error.localizedDescription)
@@ -163,12 +175,12 @@ final class LibraryBrowseViewModel {
 
     private var defaultTypeQueryValue: String? {
         switch library.type {
-        case .movie:
+        case .movie where !library.isNoneAgentLibrary:
             "1"
         case .show:
             "2"
         default:
-            "1,2"
+            nil
         }
     }
 
@@ -176,7 +188,6 @@ final class LibraryBrowseViewModel {
         switch metadata {
         case let .item(plexItem):
             guard let mediaItem = MediaDisplayItem(plexItem: plexItem) else { return nil }
-            if let itemFilter, !itemFilter(mediaItem) { return nil }
             return .media(mediaItem)
         case let .folder(folder):
             return .folder(
@@ -189,11 +200,24 @@ final class LibraryBrowseViewModel {
         }
     }
 
+    private func filterBrowseItems(_ items: [LibraryBrowseItem]) -> [LibraryBrowseItem] {
+        guard let itemFilter else { return items }
+        return items.filter { item in
+            switch item {
+            case let .media(media):
+                return itemFilter(media)
+            case .folder:
+                return true
+            }
+        }
+    }
+
     private func resetState(error: String? = nil) {
         browseItems = []
         errorMessage = error
         isLoading = false
         isLoadingMore = false
         reachedEnd = false
+        nextPageStart = 0
     }
 }

@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import UIKit
 
 struct MediaDetailHeaderSection: View {
     @Environment(DownloadManager.self) private var downloadManager
@@ -11,6 +12,8 @@ struct MediaDetailHeaderSection: View {
     let onPlayFromStart: (String, PlexItemType) -> Void
     let onShuffle: (String, PlexItemType) -> Void
     @State private var isShowingShowDownloadSheet = false
+    @State private var tooltipRatingId: String?
+    @State private var playButtonHeight: CGFloat = 56
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -23,6 +26,7 @@ struct MediaDetailHeaderSection: View {
                 playButtonsRow
                 secondaryButtonsRow
                 badgesSection
+                externalRatingsSection
 
                 if let tagline = viewModel.media.tagline, !tagline.isEmpty {
                     Text(tagline)
@@ -92,11 +96,35 @@ struct MediaDetailHeaderSection: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(viewModel.media.primaryLabel)
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
+            if let titleLogoURL = viewModel.titleLogoURL {
+                GeometryReader { proxy in
+                    let targetWidth = min(max(proxy.size.width * 0.35, 160), 560)
+                    HStack {
+                        Spacer(minLength: 0)
+                        AsyncImage(url: titleLogoURL) { phase in
+                            switch phase {
+                            case let .success(image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: targetWidth)
+                                    .frame(maxHeight: 140)
+                            case .empty:
+                                ProgressView()
+                                    .controlSize(.small)
+                            case .failure:
+                                titleText
+                            @unknown default:
+                                titleText
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+                .frame(height: 150)
+            } else {
+                titleText
+            }
 
             if let secondary = viewModel.media.secondaryLabel {
                 Text(secondary)
@@ -110,6 +138,14 @@ struct MediaDetailHeaderSection: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var titleText: some View {
+        Text(viewModel.media.primaryLabel)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .foregroundStyle(.primary)
+            .lineLimit(2)
     }
 
     private var badgesSection: some View {
@@ -130,6 +166,109 @@ struct MediaDetailHeaderSection: View {
                 badge(text: contentRating)
             }
         }
+    }
+
+    private var externalRatingsSection: some View {
+        Group {
+            if !viewModel.externalRatings.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(viewModel.externalRatings) { rating in
+                            ratingBadge(for: rating)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func ratingBadge(for rating: MediaExternalRating) -> some View {
+        let isPresented = Binding<Bool>(
+            get: { tooltipRatingId == rating.id },
+            set: { if !$0 { tooltipRatingId = nil } }
+        )
+        return Button {
+            tooltipRatingId = tooltipRatingId == rating.id ? nil : rating.id
+        } label: {
+            HStack(spacing: 5) {
+                ratingProviderIconView(rating)
+                Text(rating.value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(.ultraThinMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: isPresented, arrowEdge: .bottom) {
+            Text(fullProviderName(for: rating))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+
+    @ViewBuilder
+    private func ratingProviderIconView(_ rating: MediaExternalRating) -> some View {
+        let assetName = ratingIconAssetName(rating)
+        if UIImage(named: assetName) != nil {
+            Image(assetName)
+                .renderingMode(.original)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+        } else {
+            Image(systemName: ratingProviderSFSymbol(rating))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+        }
+    }
+
+    private func ratingIconAssetName(_ rating: MediaExternalRating) -> String {
+        let norm = normalizedRatingProvider(rating.provider)
+        if (norm == "rottentomatoes" || norm == "rt") && rating.isAudience {
+            return "rating.rt.audience"
+        }
+        switch norm {
+        case "imdb": return "rating.imdb"
+        case "rottentomatoes", "rt": return "rating.rt"
+        case "tmdb", "themoviedatabase", "themoviedb": return "rating.tmdb"
+        default: return "rating.\(norm)"
+        }
+    }
+
+    private func ratingProviderSFSymbol(_ rating: MediaExternalRating) -> String {
+        let norm = normalizedRatingProvider(rating.provider)
+        if (norm == "rottentomatoes" || norm == "rt") && rating.isAudience {
+            return "popcorn.fill"
+        }
+        switch norm {
+        case "imdb": return "star.fill"
+        case "rottentomatoes", "rt": return "circle.dotted.circle"
+        case "tmdb", "themoviedatabase", "themoviedb": return "movieclapper.fill"
+        case "tvdb": return "tv.fill"
+        default: return "chart.bar.fill"
+        }
+    }
+
+    private func fullProviderName(for rating: MediaExternalRating) -> String {
+        switch normalizedRatingProvider(rating.provider) {
+        case "imdb": return "IMDb Score"
+        case "rottentomatoes", "rt":
+            return rating.isAudience ? "Rotten Tomatoes Audience Score" : "Rotten Tomatoes Critics Score"
+        case "tmdb", "themoviedatabase", "themoviedb": return "The Movie Database (TMDB) Score"
+        case "tvdb": return "TheTVDB Rating"
+        default: return rating.provider
+        }
+    }
+
+    private func normalizedRatingProvider(_ provider: String) -> String {
+        provider
+            .lowercased()
+            .replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
     }
 
     private var genresSection: some View {
@@ -224,17 +363,13 @@ struct MediaDetailHeaderSection: View {
     }
 
     private var secondaryButtonsRow: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             watchToggleButton
-
-            if viewModel.shouldShowWatchlistButton {
-                watchlistToggleButton
-            }
-
             downloadButton
-            shuffleButton
         }
         .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.top, 2)
+        .padding(.bottom, 2)
     }
 
     private var playButtonsRow: some View {
@@ -257,26 +392,49 @@ struct MediaDetailHeaderSection: View {
                     if let detail = viewModel.primaryActionDetail {
                         Text(detail)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.white.opacity(0.8))
                     }
                 }
             }
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.accentColor)
+            )
+            .foregroundStyle(.white)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear
+                        .preference(key: PlayButtonHeightPreferenceKey.self, value: proxy.size.height)
+                }
+            )
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(.brandSecondary)
-        .foregroundStyle(.brandSecondaryForeground)
+        .buttonStyle(.plain)
+        .onPreferenceChange(PlayButtonHeightPreferenceKey.self) { value in
+            guard value > 0 else { return }
+            playButtonHeight = value
+        }
     }
 
     private var playFromStartButton: some View {
         Button(action: handlePlayFromStart) {
             Image(systemName: "arrow.counterclockwise")
                 .font(.title2.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 52)
+                .frame(height: playButtonHeight)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+                )
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .tint(.brandSecondary)
+        .buttonStyle(.plain)
         .accessibilityLabel(Text("media.detail.playFromStart"))
     }
 
@@ -310,24 +468,33 @@ struct MediaDetailHeaderSection: View {
             } label: {
                 if viewModel.isUpdatingWatchStatus {
                     ProgressView()
-                        .tint(.brandSecondaryForeground)
+                        .tint(Color.accentColor)
                 } else {
                     Image(systemName: viewModel.watchActionIcon)
                         .font(.headline.weight(.semibold))
                 }
             }
+            .foregroundStyle(Color.accentColor)
             .frame(width: 48, height: 44)
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .tint(.brandSecondary)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+            )
+            .buttonStyle(.plain)
             .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
 
-            Text(viewModel.watchActionTitle)
+            Text(watchActionLabel)
                 .font(.caption2)
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 48)
+                .frame(width: 82, alignment: .center)
+                .frame(minHeight: 28, alignment: .center)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -368,25 +535,41 @@ struct MediaDetailHeaderSection: View {
             } label: {
                 if isDownloadInProgress {
                     ProgressView()
-                        .tint(.brandSecondaryForeground)
+                        .tint(Color.accentColor)
                 } else {
                     Image(systemName: downloadIconName)
                         .font(.headline.weight(.semibold))
                 }
             }
+            .foregroundStyle(Color.accentColor)
             .frame(width: 48, height: 44)
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .tint(.brandSecondary)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+            )
+            .buttonStyle(.plain)
             .disabled(viewModel.isLoading)
 
             Text("downloads.action")
                 .font(.caption2)
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 52)
+                .frame(width: 82, alignment: .center)
+                .frame(minHeight: 28, alignment: .center)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
+    }
+
+    private var watchActionLabel: String {
+        let unwatchedTitle = String(localized: "media.detail.watchAction.markUnwatched")
+        if viewModel.watchActionTitle == unwatchedTitle {
+            return "Mark as\nUnwatched"
+        }
+        return viewModel.watchActionTitle
     }
 
     private func handlePlay() {
@@ -471,5 +654,13 @@ private struct PlayProgressIcon: View {
                 .font(.title3.weight(.semibold))
         }
         .frame(width: 30, height: 30)
+    }
+}
+
+private struct PlayButtonHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 56
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

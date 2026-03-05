@@ -6,6 +6,7 @@ struct PortraitMediaCard: View {
     let width: CGFloat?
     let showsLabels: Bool
     let onTap: () -> Void
+    let onLongPress: (() -> Void)?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -17,12 +18,14 @@ struct PortraitMediaCard: View {
         width: CGFloat? = nil,
         showsLabels: Bool,
         onTap: @escaping () -> Void,
+        onLongPress: (() -> Void)? = nil,
     ) {
         self.media = media
         self.height = height
         self.width = width
         self.showsLabels = showsLabels
         self.onTap = onTap
+        self.onLongPress = onLongPress
     }
 
     private var defaultHeight: CGFloat {
@@ -46,6 +49,7 @@ struct PortraitMediaCard: View {
             artworkKind: .thumb,
             showsLabels: showsLabels,
             onTap: onTap,
+            onLongPress: onLongPress,
         )
     }
 }

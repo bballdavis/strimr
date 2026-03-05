@@ -22,7 +22,8 @@ struct PlaybackSettings: Codable, Equatable {
 struct InterfaceSettings: Codable, Equatable {
     var hiddenLibraryIds: [String] = []
     var navigationLibraryIds: [String] = []
-    var displayCollections = true
+    // Plinx fork: default false — collections are an opt-in feature for kids' context.
+    var displayCollections = false
     var displayPlaylists = true
     var displaySeerrDiscoverTab = true
 
@@ -32,7 +33,7 @@ struct InterfaceSettings: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         hiddenLibraryIds = try container.decodeIfPresent([String].self, forKey: .hiddenLibraryIds) ?? []
         navigationLibraryIds = try container.decodeIfPresent([String].self, forKey: .navigationLibraryIds) ?? []
-        displayCollections = try container.decodeIfPresent(Bool.self, forKey: .displayCollections) ?? true
+        displayCollections = try container.decodeIfPresent(Bool.self, forKey: .displayCollections) ?? false
         displayPlaylists = try container.decodeIfPresent(Bool.self, forKey: .displayPlaylists) ?? true
         displaySeerrDiscoverTab = try container.decodeIfPresent(Bool.self, forKey: .displaySeerrDiscoverTab) ?? true
     }
