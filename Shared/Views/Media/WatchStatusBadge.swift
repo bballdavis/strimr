@@ -6,18 +6,29 @@ struct WatchStatusBadge: View {
     var body: some View {
         Group {
             if let remaining = media.remainingUnwatchedLeaves {
-                badge {
+                unfinishedBadge {
                     Text("\(remaining)")
                 }
             } else if media.isFullyWatched {
-                badge {
-                    Image(systemName: "checkmark")
-                }
+                watchedIndicator
             }
         }
     }
 
-    private func badge(@ViewBuilder content: () -> some View) -> some View {
+    private var watchedIndicator: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.accentColor)
+            
+            Image(systemName: "checkmark")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 24, height: 24)
+        .padding(8)
+    }
+
+    private func unfinishedBadge(@ViewBuilder content: () -> some View) -> some View {
         content()
             .font(.caption.weight(.semibold))
             .foregroundStyle(.white)
