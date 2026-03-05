@@ -184,5 +184,4 @@ final class MainCoordinator: ObservableObject {
             seerrDiscoverPath = NavigationPath()
         }
     }
-
 }
