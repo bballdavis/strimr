@@ -210,6 +210,8 @@ final class MainCoordinator: ObservableObject {
             searchPath = NavigationPath()
         case .library, .libraryDetail:
             libraryPath = NavigationPath()
+        case .downloads:
+            downloadsPath = NavigationPath()
         case .more:
             morePath = NavigationPath()
         case .seerrDiscover:
