@@ -3,6 +3,8 @@ import SwiftUI
 struct LibraryCollectionsView: View {
     @State var viewModel: LibraryCollectionsViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
+    var topContent: AnyView? = nil
 
     private var gridColumns: [GridItem] {
         [
@@ -12,24 +14,34 @@ struct LibraryCollectionsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: 16) {
-                ForEach(viewModel.items) { media in
-                    PortraitMediaCard(media: media, width: 112, showsLabels: true) {
-                        onSelectMedia(media)
-                    }
-                    .task {
-                        if media == viewModel.items.last {
-                            await viewModel.loadMore()
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 16) {
+                if let topContent {
+                    topContent
+                        .padding(.horizontal, 16)
                 }
 
-                if viewModel.isLoadingMore {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
+                LazyVGrid(columns: gridColumns, spacing: 16) {
+                    ForEach(viewModel.items) { media in
+                        PortraitMediaCard(media: media, width: 112, showsLabels: true) {
+                            onSelectMedia(media)
+                        }
+                        .simultaneousGesture(LongPressGesture().onEnded { _ in
+                            onLongPressMedia(media)
+                        })
+                        .task {
+                            if media == viewModel.items.last {
+                                await viewModel.loadMore()
+                            }
+                        }
+                    }
+
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    }
                 }
+                .padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
             .padding(.top, 16)
         }
         .overlay {

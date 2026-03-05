@@ -16,6 +16,7 @@ final class LibraryBrowseViewModel {
     var isLoadingMore = false
     var errorMessage: String?
     var controls: LibraryBrowseControlsViewModel
+    var itemFilter: ((MediaDisplayItem) -> Bool)?
     private var folderStack: [FolderBreadcrumb] = []
 
     private var reachedEnd = false
@@ -175,6 +176,7 @@ final class LibraryBrowseViewModel {
         switch metadata {
         case let .item(plexItem):
             guard let mediaItem = MediaDisplayItem(plexItem: plexItem) else { return nil }
+            if let itemFilter, !itemFilter(mediaItem) { return nil }
             return .media(mediaItem)
         case let .folder(folder):
             return .folder(

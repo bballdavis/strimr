@@ -8,6 +8,7 @@ final class LibraryRecommendedViewModel {
     var hubs: [Hub] = []
     var isLoading = false
     var errorMessage: String?
+    var hubFilter: ((Hub) -> Hub?)?
 
     @ObservationIgnored private let context: PlexAPIContext
 
@@ -42,7 +43,12 @@ final class LibraryRecommendedViewModel {
         do {
             let response = try await hubRepository.getSectionHubs(sectionId: sectionId)
             let plexHubs = response.mediaContainer.hub ?? []
-            hubs = plexHubs.map(Hub.init)
+            let mappedHubs = plexHubs.map(Hub.init)
+            if let hubFilter {
+                hubs = mappedHubs.compactMap(hubFilter)
+            } else {
+                hubs = mappedHubs
+            }
         } catch {
             ErrorReporter.capture(error)
             resetState(error: error.localizedDescription)

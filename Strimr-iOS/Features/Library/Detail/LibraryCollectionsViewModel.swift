@@ -9,6 +9,7 @@ final class LibraryCollectionsViewModel {
     var isLoading = false
     var isLoadingMore = false
     var errorMessage: String?
+    var itemFilter: ((MediaDisplayItem) -> Bool)?
     private var reachedEnd = false
 
     @ObservationIgnored private let context: PlexAPIContext
@@ -59,6 +60,10 @@ final class LibraryCollectionsViewModel {
 
             let newItems = (response.mediaContainer.metadata ?? [])
                 .compactMap(MediaDisplayItem.init)
+                .filter { item in
+                    guard let itemFilter else { return true }
+                    return itemFilter(item)
+                }
             let total = response.mediaContainer.totalSize ?? (start + newItems.count)
 
             if reset {

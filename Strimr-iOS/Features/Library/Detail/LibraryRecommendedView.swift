@@ -3,6 +3,9 @@ import SwiftUI
 struct LibraryRecommendedView: View {
     @State var viewModel: LibraryRecommendedViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
+    var topContent: AnyView? = nil
+    var overrideLayout: ((Hub) -> MediaCarousel.Layout?)? = nil
 
     private let landscapeHubIdentifiers: [String] = [
         "inprogress",
@@ -11,6 +14,10 @@ struct LibraryRecommendedView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                if let topContent {
+                    topContent
+                }
+
                 ForEach(viewModel.hubs) { hub in
                     if hub.hasItems {
                         MediaHubSection(title: hub.title) {
@@ -42,7 +49,8 @@ struct LibraryRecommendedView: View {
 
     @ViewBuilder
     private func carousel(for hub: Hub) -> some View {
-        if shouldUseLandscape(for: hub) {
+        let resolvedLayout = overrideLayout?(hub) ?? (shouldUseLandscape(for: hub) ? .landscape : .portrait)
+        if resolvedLayout == .landscape {
             MediaCarousel(
                 layout: .landscape,
                 items: hub.items,

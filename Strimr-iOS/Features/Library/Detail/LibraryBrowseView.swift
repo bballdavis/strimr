@@ -3,6 +3,10 @@ import SwiftUI
 struct LibraryBrowseView: View {
     @State var viewModel: LibraryBrowseViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
+    var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
+    var topContent: AnyView? = nil
+    var overrideLayout: MediaCarousel.Layout? = nil
+    var showsControls: Bool = true
 
     private var gridColumns: [GridItem] {
         [
@@ -15,7 +19,12 @@ struct LibraryBrowseView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if controls.hasDisplayTypes {
+                if let topContent {
+                    topContent
+                        .padding(.horizontal, 16)
+                }
+
+                if showsControls, controls.hasDisplayTypes {
                     LibraryBrowseControlsView(
                         viewModel: controls,
                         showsBackButton: viewModel.canNavigateBack,
@@ -32,6 +41,9 @@ struct LibraryBrowseView: View {
                                 PortraitMediaCard(media: media, width: 112, showsLabels: true) {
                                     onSelectMedia(media)
                                 }
+                                .simultaneousGesture(LongPressGesture().onEnded { _ in
+                                    onLongPressMedia(media)
+                                })
                             case let .folder(folder):
                                 FolderCard(title: folder.title, width: 112, showsLabels: true) {
                                     viewModel.enterFolder(folder)
