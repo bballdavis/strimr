@@ -1,7 +1,32 @@
 import SwiftUI
 
+// MARK: - Environment key for optimistic watched-status overrides
+
+private struct WatchedOverridesKey: EnvironmentKey {
+    static let defaultValue: [String: Bool] = [:]
+}
+
+extension EnvironmentValues {
+    /// Optimistic watched-status overrides keyed by media item ID.
+    /// When a value is present it takes precedence over the model's
+    /// `isFullyWatched` / `viewCount`.
+    var watchedOverrides: [String: Bool] {
+        get { self[WatchedOverridesKey.self] }
+        set { self[WatchedOverridesKey.self] = newValue }
+    }
+}
+
 struct WatchStatusBadge: View {
     let media: MediaDisplayItem
+
+    @Environment(\.watchedOverrides) private var watchedOverrides
+
+    private var isWatched: Bool {
+        if let override = watchedOverrides[media.id] {
+            return override
+        }
+        return media.isFullyWatched
+    }
 
     var body: some View {
         Group {
@@ -9,7 +34,7 @@ struct WatchStatusBadge: View {
                 unfinishedBadge {
                     Text("\(remaining)")
                 }
-            } else if media.isFullyWatched {
+            } else if isWatched {
                 watchedIndicator
             }
         }
@@ -25,6 +50,10 @@ struct WatchStatusBadge: View {
                 .foregroundStyle(.white)
         }
         .frame(width: 24, height: 24)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(Color.black.opacity(0.3), lineWidth: 1)
+        )
         .padding(8)
     }
 
