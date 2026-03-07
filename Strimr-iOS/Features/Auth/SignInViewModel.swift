@@ -58,7 +58,7 @@ final class SignInViewModel {
         let base = "https://app.plex.tv/auth#?"
         let fragment =
             "clientID=\(pin.clientIdentifier)" +
-            "&context[device][product]=Strimr" +
+            "&context[device][product]=Plinx" +
             "&code=\(pin.code)"
 
         return URL(string: base + fragment)!
