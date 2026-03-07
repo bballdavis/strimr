@@ -73,26 +73,6 @@ final class MainCoordinator: ObservableObject {
         )
     }
 
-    /// Pops the navigation path for the provided tab back to its root state.
-    func popToRoot(for tab: Tab) {
-        switch tab {
-        case .home:
-            homePath = NavigationPath()
-        case .search:
-            searchPath = NavigationPath()
-        case .library:
-            libraryPath = NavigationPath()
-        case .downloads:
-            downloadsPath = NavigationPath()
-        case .more:
-            morePath = NavigationPath()
-        case .seerrDiscover:
-            seerrDiscoverPath = NavigationPath()
-        case let .libraryDetail(libraryId):
-            libraryDetailPaths[libraryId] = NavigationPath()
-        }
-    }
-
     func showMediaDetail(_ media: PlayableMediaItem) {
         let route = Route.mediaDetail(media)
 
@@ -104,7 +84,7 @@ final class MainCoordinator: ObservableObject {
         case .library:
             libraryPath.append(route)
         case .downloads:
-            break
+            downloadsPath.append(route)
         case .more:
             break
         case .seerrDiscover:
@@ -144,7 +124,7 @@ final class MainCoordinator: ObservableObject {
         case .library:
             libraryPath.append(route)
         case .downloads:
-            break
+            downloadsPath.append(route)
         case .more:
             break
         case .seerrDiscover:
@@ -167,7 +147,7 @@ final class MainCoordinator: ObservableObject {
         case .library:
             libraryPath.append(route)
         case .downloads:
-            break
+            downloadsPath.append(route)
         case .more:
             break
         case .seerrDiscover:
@@ -183,7 +163,7 @@ final class MainCoordinator: ObservableObject {
         switch tab {
         case .seerrDiscover:
             seerrDiscoverPath.append(media)
-        case .home, .search, .library, .downloads, .more:
+        case .home, .search, .library, .more, .downloads:
             break
         case .libraryDetail:
             break
