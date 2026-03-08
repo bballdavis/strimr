@@ -168,6 +168,7 @@ struct ProfileSwitcherTVView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.black.opacity(0.4))
                 ProgressView()
+                    .tint(Color.accentColor)
             } else if requiresPin(for: user) {
                 VStack {
                     HStack {
@@ -183,7 +184,7 @@ struct ProfileSwitcherTVView: View {
                     HStack {
                         Spacer()
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green.opacity(0.9))
+                            .foregroundStyle(Color.accentColor.opacity(0.9))
                     }
                     Spacer()
                 }
