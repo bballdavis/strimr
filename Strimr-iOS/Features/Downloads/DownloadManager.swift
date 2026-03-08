@@ -330,7 +330,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         do {
             let data = try JSONEncoder().encode(items)
             try data.write(to: indexFileURL, options: .atomic)
-        } catch {}
+        } catch {
+            // Log persistence errors for debugging
+            print("[DownloadManager] Failed to persist download state: \(error)")
+        }
     }
 
     private func loadPersistedState() {
@@ -342,6 +345,19 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             let data = try Data(contentsOf: indexFileURL)
             items = try JSONDecoder().decode([DownloadItem].self, from: data)
         } catch {
+            // CRITICAL: Log the error instead of silently clearing items
+            // This is a known source of regressions where the download tab appeared
+            // to disappear - the persistence layer fails silently and wipes the item list.
+            // Common causes:
+            // - Date encoding format changes between Swift versions
+            // - Model schema changes (added/removed/renamed fields)
+            // - Corrupted index.json file
+            // - Incompatible Codable implementation changes
+            print("[DownloadManager] Failed to load persisted downloads: \(error)")
+            print("[DownloadManager] Downloads index file location: \(indexFileURL.path)")
+            
+            // Don't silently wipe items - preserve empty state
+            // This prevents loss of download state on app restart
             items = []
         }
     }
