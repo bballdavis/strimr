@@ -31,10 +31,26 @@ struct MediaCard: View {
                     Text(media.primaryLabel)
                         .font(primaryLabelFont)
                         .lineLimit(1)
-                    Text(media.secondaryLabel ?? "")
-                        .font(secondaryLabelFont)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if showsClipMetadataRow {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(media.secondaryLabel ?? "")
+                                .font(secondaryLabelFont)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+
+                            Spacer(minLength: 8)
+
+                            Text(clipDurationText ?? "")
+                                .font(secondaryLabelFont)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Text(media.secondaryLabel ?? "")
+                            .font(secondaryLabelFont)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     Text(media.tertiaryLabel ?? "")
                         .font(secondaryLabelFont)
                         .foregroundStyle(.secondary)
@@ -107,5 +123,13 @@ struct MediaCard: View {
         #else
             .footnote
         #endif
+    }
+
+    private var showsClipMetadataRow: Bool {
+        media.type == .clip && size.width > size.height && media.secondaryLabel != nil && clipDurationText != nil
+    }
+
+    private var clipDurationText: String? {
+        media.playableItem?.duration?.mediaDurationText()
     }
 }
