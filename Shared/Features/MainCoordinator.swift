@@ -7,7 +7,6 @@ final class MainCoordinator: ObservableObject {
         case home
         case search
         case library
-        case downloads
         case more
         case seerrDiscover
         case libraryDetail(String)
@@ -23,7 +22,6 @@ final class MainCoordinator: ObservableObject {
     @Published var homePath = NavigationPath()
     @Published var searchPath = NavigationPath()
     @Published var libraryPath = NavigationPath()
-    @Published var downloadsPath = NavigationPath()
     @Published var morePath = NavigationPath()
     @Published var seerrDiscoverPath = NavigationPath()
     @Published private var libraryDetailPaths: [String: NavigationPath] = [:]
@@ -42,8 +40,6 @@ final class MainCoordinator: ObservableObject {
                     self.searchPath
                 case .library:
                     self.libraryPath
-                case .downloads:
-                    self.downloadsPath
                 case .more:
                     self.morePath
                 case .seerrDiscover:
@@ -60,8 +56,6 @@ final class MainCoordinator: ObservableObject {
                     self.searchPath = newValue
                 case .library:
                     self.libraryPath = newValue
-                case .downloads:
-                    self.downloadsPath = newValue
                 case .more:
                     self.morePath = newValue
                 case .seerrDiscover:
@@ -83,8 +77,6 @@ final class MainCoordinator: ObservableObject {
             searchPath.append(route)
         case .library:
             libraryPath.append(route)
-        case .downloads:
-            downloadsPath.append(route)
         case .more:
             break
         case .seerrDiscover:
@@ -123,8 +115,6 @@ final class MainCoordinator: ObservableObject {
             searchPath.append(route)
         case .library:
             libraryPath.append(route)
-        case .downloads:
-            downloadsPath.append(route)
         case .more:
             break
         case .seerrDiscover:
@@ -146,8 +136,6 @@ final class MainCoordinator: ObservableObject {
             searchPath.append(route)
         case .library:
             libraryPath.append(route)
-        case .downloads:
-            downloadsPath.append(route)
         case .more:
             break
         case .seerrDiscover:
@@ -163,7 +151,7 @@ final class MainCoordinator: ObservableObject {
         switch tab {
         case .seerrDiscover:
             seerrDiscoverPath.append(media)
-        case .home, .search, .library, .more, .downloads:
+        case .home, .search, .library, .more:
             break
         case .libraryDetail:
             break
@@ -190,8 +178,6 @@ final class MainCoordinator: ObservableObject {
             searchPath = NavigationPath()
         case .library, .libraryDetail:
             libraryPath = NavigationPath()
-        case .downloads:
-            downloadsPath = NavigationPath()
         case .more:
             morePath = NavigationPath()
         case .seerrDiscover:

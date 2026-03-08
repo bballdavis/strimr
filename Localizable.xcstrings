@@ -6156,6 +6156,7 @@
       }
     },
     "settings.downloads.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6959,9 +6960,6 @@
           }
         }
       }
-    },
-    "tabs.downloads" : {
-
     },
     "tabs.home" : {
       "extractionState" : "stale",
