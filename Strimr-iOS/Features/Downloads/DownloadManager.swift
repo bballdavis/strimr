@@ -148,7 +148,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             guard let plexItem = response.mediaContainer.metadata?.first else { return }
 
             let mediaItem = MediaItem(plexItem: plexItem)
-            guard mediaItem.type == .movie || mediaItem.type == .episode else { return }
+            guard mediaItem.type == .movie || mediaItem.type == .episode || mediaItem.type == .clip else { return }
             guard let partPath = plexItem.media?.first?.parts.first?.key else { return }
 
             let mediaRepository = try MediaRepository(context: context)
@@ -319,7 +319,13 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         artworkLayoutStyle: DownloadArtworkLayoutStyle,
     ) async -> String? {
         guard let imageRepository = try? ImageRepository(context: context) else { return nil }
-        guard let artworkPath = mediaItem.preferredThumbPath else { return nil }
+        // Clips: always use the item's own thumb. preferredThumbPath would fall back to
+        // parentThumbPath first, which for folder-organised clips would be the folder's cover
+        // rather than the individual clip's chosen thumbnail.
+        let artworkPath = mediaItem.type == .clip
+            ? (mediaItem.thumbPath ?? mediaItem.preferredThumbPath)
+            : mediaItem.preferredThumbPath
+        guard let artworkPath else { return nil }
         let artworkSize = artworkSize(for: artworkLayoutStyle)
         guard let posterURL = imageRepository.transcodeImageURL(
             path: artworkPath,

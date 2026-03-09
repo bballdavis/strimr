@@ -41,7 +41,13 @@ struct MediaItem: Identifiable, Hashable {
     }
 
     var preferredThumbPath: String? {
-        grandparentThumbPath ?? parentThumbPath ?? thumbPath
+        // Clips (Other Videos) are not in a show/episode hierarchy — grandparentThumb and
+        // parentThumb belong to folder containers, not to the clip itself. Always use the
+        // item's own thumb so the user-selected/sidecar artwork is shown, not the folder cover.
+        if type == .clip {
+            return thumbPath
+        }
+        return grandparentThumbPath ?? parentThumbPath ?? thumbPath
     }
 
     var preferredArtPath: String? {
