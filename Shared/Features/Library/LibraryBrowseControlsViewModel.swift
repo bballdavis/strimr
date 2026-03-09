@@ -10,6 +10,11 @@ final class LibraryBrowseControlsViewModel {
         case sort
     }
 
+    enum QuickSort: String, Equatable {
+        case alphabetical
+        case newest
+    }
+
     struct DisplayType: Identifiable, Equatable {
         let id: String
         let key: String
@@ -67,6 +72,7 @@ final class LibraryBrowseControlsViewModel {
     var selectedDisplayType: DisplayType?
     var activePanel: Panel?
     var selectedSort: SortSelection?
+    var preferredQuickSort: QuickSort?
     var selectedFilters: [String: FilterSelection] = [:]
     var activeFilterSheet: FilterSheetState?
     var filterOptions: [String: [FilterOption]] = [:]
@@ -147,7 +153,21 @@ final class LibraryBrowseControlsViewModel {
         } else {
             selectedSort = SortSelection(sort: sort, direction: sort.defaultDirection)
         }
+        preferredQuickSort = nil
         onSelectionChanged?()
+    }
+
+    func selectQuickSort(_ quickSort: QuickSort, notify: Bool = true) {
+        preferredQuickSort = quickSort
+        syncPreferredQuickSort(notify: notify)
+    }
+
+    func isQuickSortSelected(_ quickSort: QuickSort) -> Bool {
+        preferredQuickSort == quickSort
+    }
+
+    func hasQuickSort(_ quickSort: QuickSort) -> Bool {
+        matchingSort(for: quickSort) != nil
     }
 
     func toggleFilter(_ filter: PlexSectionItemFilter) {
@@ -207,6 +227,7 @@ final class LibraryBrowseControlsViewModel {
         }
 
         normalizeSelections(for: selectedDisplayType)
+        syncPreferredQuickSort(notify: true)
     }
 
     func buildQueryItems(
@@ -269,6 +290,52 @@ final class LibraryBrowseControlsViewModel {
            !displayType.sorts.contains(where: { $0.key == selectedSort.sort.key })
         {
             self.selectedSort = nil
+        }
+    }
+
+    private func syncPreferredQuickSort(notify: Bool) {
+        guard let preferredQuickSort,
+              let sort = matchingSort(for: preferredQuickSort)
+        else { return }
+
+        let direction: PlexSortDirection = switch preferredQuickSort {
+        case .alphabetical:
+            .asc
+        case .newest:
+            .desc
+        }
+
+        let selection = SortSelection(sort: sort, direction: direction)
+        guard selectedSort != selection else { return }
+        selectedSort = selection
+
+        if notify {
+            onSelectionChanged?()
+        }
+    }
+
+    private func matchingSort(for quickSort: QuickSort) -> PlexSectionItemSort? {
+        switch quickSort {
+        case .alphabetical:
+            availableSorts.first(where: isAlphabeticalSort(_:))
+        case .newest:
+            availableSorts.first(where: isNewestSort(_:))
+        }
+    }
+
+    private func isAlphabeticalSort(_ sort: PlexSectionItemSort) -> Bool {
+        let fields = [sort.key, sort.descKey, sort.title]
+        return fields.contains { value in
+            let normalized = value.lowercased()
+            return normalized.contains("title") || normalized.contains("alpha")
+        }
+    }
+
+    private func isNewestSort(_ sort: PlexSectionItemSort) -> Bool {
+        let fields = [sort.key, sort.descKey, sort.title]
+        return fields.contains { value in
+            let normalized = value.lowercased()
+            return normalized.contains("addedat") || normalized.contains("date added") || normalized.contains("added")
         }
     }
 

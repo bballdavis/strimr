@@ -245,6 +245,7 @@ struct PlexItem: Codable, Equatable {
     let ratingKey: String
     let key: String
     let guid: String
+    let librarySectionID: Int?
     let type: PlexItemType
     let title: String
     let summary: String?
@@ -325,7 +326,7 @@ struct PlexItem: Codable, Equatable {
     let smart: Bool?
 
     private enum CodingKeys: String, CodingKey {
-        case ratingKey, key, guid, type, title, summary, thumb, art, year, viewOffset, lastViewedAt, viewCount
+        case ratingKey, key, guid, librarySectionID, type, title, summary, thumb, art, year, viewOffset, lastViewedAt, viewCount
         case originallyAvailableAt, duration, audienceRating, audienceRatingImage, contentRating
         case contentRatingAge, tagline, slug, studio, rating, chapterSource, primaryExtraKey, ratingImage
         case index, leafCount, viewedLeafCount, childCount

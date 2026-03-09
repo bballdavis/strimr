@@ -107,9 +107,9 @@ struct LibraryBrowseView: View {
             await viewModel.load()
         }
         .refreshable {
-            await viewModel.refresh()
             URLCache.shared.removeAllCachedResponses()
             artworkRefreshToken = UUID()
+            await viewModel.refresh()
         }
     }
 }

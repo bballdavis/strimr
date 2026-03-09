@@ -21,6 +21,8 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     @ObservationIgnored private var progressByTaskIdentifier: [Int: Double] = [:]
     @ObservationIgnored private var isLoadingPersistedState = false
     @ObservationIgnored private var ignoredCompletionIDs: Set<String> = []
+    @ObservationIgnored private var artworkReconciliationIDs: Set<String> = []
+    @ObservationIgnored private var libraryAgentBySectionID: [Int: String] = [:]
     @ObservationIgnored private let downloadsDirectory: URL
     @ObservationIgnored private let indexFileURL: URL
     @ObservationIgnored private var backgroundSession: URLSession!
@@ -157,10 +159,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             try createDirectoryIfNeeded(at: folderURL)
             try setExcludedFromBackup(at: folderURL)
 
+            let artworkLayoutStyle = await resolveArtworkLayoutStyle(for: plexItem, context: context)
             let posterFileName = await downloadPosterIfAvailable(
                 for: mediaItem,
                 context: context,
                 destinationFolder: folderURL,
+                artworkLayoutStyle: artworkLayoutStyle,
             )
 
             var request = URLRequest(url: mediaURL)
@@ -177,6 +181,8 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 ratingKey: mediaItem.id,
                 guid: mediaItem.guid,
                 type: mediaItem.type,
+                sourceLibrarySectionID: plexItem.librarySectionID,
+                artworkLayoutStyle: artworkLayoutStyle,
                 title: mediaItem.title,
                 summary: mediaItem.summary,
                 genres: mediaItem.genres,
@@ -212,6 +218,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             task.resume()
         } catch {
             lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    func reconcileArtworkMetadataIfNeeded(context: PlexAPIContext) async {
+        let itemIDs = items.compactMap { item in
+            item.metadata.artworkLayoutStyle == nil ? item.id : nil
+        }
+
+        for itemID in itemIDs {
+            await reconcileArtworkMetadata(for: itemID, context: context)
         }
     }
 
@@ -300,10 +316,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         for mediaItem: MediaItem,
         context: PlexAPIContext,
         destinationFolder: URL,
+        artworkLayoutStyle: DownloadArtworkLayoutStyle,
     ) async -> String? {
         guard let imageRepository = try? ImageRepository(context: context) else { return nil }
         guard let artworkPath = mediaItem.preferredThumbPath else { return nil }
-        let artworkSize = artworkSize(for: mediaItem)
+        let artworkSize = artworkSize(for: artworkLayoutStyle)
         guard let posterURL = imageRepository.transcodeImageURL(
             path: artworkPath,
             width: Int(artworkSize.width.rounded()),
@@ -324,16 +341,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    private func artworkSize(for mediaItem: MediaItem) -> CGSize {
-        if portraitArtworkTypes.contains(mediaItem.type) {
+    private func artworkSize(for artworkLayoutStyle: DownloadArtworkLayoutStyle) -> CGSize {
+        if artworkLayoutStyle.isPortrait {
             return CGSize(width: 480, height: 720)
         }
 
         return CGSize(width: 720, height: 405)
-    }
-
-    private var portraitArtworkTypes: Set<PlexItemType> {
-        [.movie, .show, .season, .episode]
     }
 
     private func isAlreadyScheduled(for ratingKey: String) -> Bool {
@@ -408,6 +421,89 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             try data.write(to: metadataURL, options: .atomic)
             try setExcludedFromBackup(at: metadataURL)
         } catch {}
+    }
+
+    private func reconcileArtworkMetadata(for itemID: String, context: PlexAPIContext) async {
+        guard !artworkReconciliationIDs.contains(itemID) else { return }
+        guard let itemIndex = items.firstIndex(where: { $0.id == itemID }) else { return }
+
+        artworkReconciliationIDs.insert(itemID)
+        defer { artworkReconciliationIDs.remove(itemID) }
+
+        let item = items[itemIndex]
+
+        do {
+            let metadataRepository = try MetadataRepository(context: context)
+            let response = try await metadataRepository.getMetadata(
+                ratingKey: item.ratingKey,
+                params: .init(checkFiles: true),
+            )
+            guard let plexItem = response.mediaContainer.metadata?.first else { return }
+            let mediaItem = MediaItem(plexItem: plexItem)
+            let artworkLayoutStyle = await resolveArtworkLayoutStyle(for: plexItem, context: context)
+
+            var refreshedPosterFileName = item.metadata.posterFileName
+            let folderURL = downloadsDirectory.appendingPathComponent(item.id, isDirectory: true)
+            if item.metadata.artworkLayoutStyle != artworkLayoutStyle {
+                refreshedPosterFileName = await downloadPosterIfAvailable(
+                    for: mediaItem,
+                    context: context,
+                    destinationFolder: folderURL,
+                    artworkLayoutStyle: artworkLayoutStyle,
+                ) ?? refreshedPosterFileName
+            }
+
+            items[itemIndex].metadata.sourceLibrarySectionID = plexItem.librarySectionID
+            items[itemIndex].metadata.artworkLayoutStyle = artworkLayoutStyle
+            items[itemIndex].metadata.posterFileName = refreshedPosterFileName
+            persistMetadataFile(for: items[itemIndex])
+            persistState()
+        } catch {
+            // Retry on a future appearance when metadata is still unresolved.
+        }
+    }
+
+    private func resolveArtworkLayoutStyle(
+        for plexItem: PlexItem,
+        context: PlexAPIContext,
+    ) async -> DownloadArtworkLayoutStyle {
+        let defaultStyle = plexItem.type.defaultDownloadArtworkLayoutStyle
+        guard let sectionID = plexItem.librarySectionID else { return defaultStyle }
+
+        if let cachedAgent = libraryAgentBySectionID[sectionID] {
+            return resolveArtworkLayoutStyle(for: plexItem.type, libraryAgent: cachedAgent)
+        }
+
+        do {
+            let sectionRepository = try SectionRepository(context: context)
+            let response = try await sectionRepository.getSections()
+            let sections = response.mediaContainer.directory ?? []
+            libraryAgentBySectionID = Dictionary(
+                uniqueKeysWithValues: sections.compactMap { section in
+                    guard let sectionID = Int(section.key) else { return nil }
+                    return (sectionID, section.agent)
+                }
+            )
+
+            let agent = libraryAgentBySectionID[sectionID] ?? ""
+            return resolveArtworkLayoutStyle(for: plexItem.type, libraryAgent: agent)
+        } catch {
+            return defaultStyle
+        }
+    }
+
+    private func resolveArtworkLayoutStyle(
+        for type: PlexItemType,
+        libraryAgent: String,
+    ) -> DownloadArtworkLayoutStyle {
+        if type == .movie,
+           !libraryAgent.isEmpty,
+           libraryAgent.lowercased().contains("none")
+        {
+            return .landscape
+        }
+
+        return type.defaultDownloadArtworkLayoutStyle
     }
 
     private func updateItem(_ transform: (inout DownloadItem) -> Void, matchingTask task: URLSessionTask) {

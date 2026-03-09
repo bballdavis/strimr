@@ -27,7 +27,6 @@ final class LibraryRecommendedViewModel {
     }
 
     func reload() async {
-        hubs = []
         await fetchHubs()
     }
 
@@ -55,9 +54,23 @@ final class LibraryRecommendedViewModel {
                 hubs = mappedHubs
             }
         } catch {
+            guard !isCancellation(error) else { return }
             ErrorReporter.capture(error)
-            resetState(error: error.localizedDescription)
+            if hubs.isEmpty {
+                resetState(error: error.localizedDescription)
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    private func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError {
+            return true
+        }
+
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
     private func resetState(error: String? = nil) {

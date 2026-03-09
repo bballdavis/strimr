@@ -48,9 +48,9 @@ struct LibraryRecommendedView: View {
             await viewModel.load()
         }
         .refreshable {
-            await viewModel.reload()
             URLCache.shared.removeAllCachedResponses()
             artworkRefreshToken = UUID()
+            await viewModel.reload()
         }
     }
 
