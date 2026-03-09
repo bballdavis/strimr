@@ -126,7 +126,7 @@ struct MediaCard: View {
     }
 
     private var showsClipMetadataRow: Bool {
-        media.type == .clip && size.width > size.height && media.secondaryLabel != nil && clipDurationText != nil
+        size.width > size.height && (media.secondaryLabel != nil || clipDurationText != nil)
     }
 
     private var clipDurationText: String? {

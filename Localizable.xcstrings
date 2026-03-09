@@ -622,7 +622,13 @@
     "Currently Active" : {
 
     },
+    "Default is Original. This applies to future downloads." : {
+
+    },
     "Default Server" : {
+
+    },
+    "Download Quality" : {
 
     },
     "downloads.action" : {
