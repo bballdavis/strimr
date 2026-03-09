@@ -302,8 +302,13 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         destinationFolder: URL,
     ) async -> String? {
         guard let imageRepository = try? ImageRepository(context: context) else { return nil }
-        guard let thumbPath = mediaItem.preferredThumbPath else { return nil }
-        guard let posterURL = imageRepository.transcodeImageURL(path: thumbPath, width: 480, height: 720)
+        guard let artworkPath = mediaItem.preferredThumbPath else { return nil }
+        let artworkSize = artworkSize(for: mediaItem)
+        guard let posterURL = imageRepository.transcodeImageURL(
+            path: artworkPath,
+            width: Int(artworkSize.width.rounded()),
+            height: Int(artworkSize.height.rounded())
+        )
         else { return nil }
 
         do {
@@ -317,6 +322,18 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         } catch {
             return nil
         }
+    }
+
+    private func artworkSize(for mediaItem: MediaItem) -> CGSize {
+        if portraitArtworkTypes.contains(mediaItem.type) {
+            return CGSize(width: 480, height: 720)
+        }
+
+        return CGSize(width: 720, height: 405)
+    }
+
+    private var portraitArtworkTypes: Set<PlexItemType> {
+        [.movie, .show, .season, .episode]
     }
 
     private func isAlreadyScheduled(for ratingKey: String) -> Bool {
