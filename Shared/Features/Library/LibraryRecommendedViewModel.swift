@@ -26,6 +26,11 @@ final class LibraryRecommendedViewModel {
         await fetchHubs()
     }
 
+    func reload() async {
+        hubs = []
+        await fetchHubs()
+    }
+
     private func fetchHubs() async {
         guard let sectionId = library.sectionId else {
             resetState(error: String(localized: "errors.missingLibraryIdentifier"))

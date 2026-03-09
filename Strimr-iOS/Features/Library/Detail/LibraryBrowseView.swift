@@ -7,6 +7,7 @@ struct LibraryBrowseView: View {
     var topContent: AnyView? = nil
     var overrideLayout: MediaCarousel.Layout? = nil
     var showsControls: Bool = true
+    @State private var artworkRefreshToken = UUID()
 
     private var resolvedLayout: MediaCarousel.Layout {
         overrideLayout ?? .portrait
@@ -83,6 +84,7 @@ struct LibraryBrowseView: View {
             }
             .padding(.top, 16)
         }
+        .id(artworkRefreshToken)
         .overlay {
             if viewModel.isLoading, viewModel.browseItems.isEmpty {
                 ProgressView("library.browse.loading")
@@ -103,6 +105,11 @@ struct LibraryBrowseView: View {
         }
         .task {
             await viewModel.load()
+        }
+        .refreshable {
+            await viewModel.refresh()
+            URLCache.shared.removeAllCachedResponses()
+            artworkRefreshToken = UUID()
         }
     }
 }

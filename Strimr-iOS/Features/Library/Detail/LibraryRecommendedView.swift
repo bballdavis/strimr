@@ -6,6 +6,7 @@ struct LibraryRecommendedView: View {
     var onLongPressMedia: (MediaDisplayItem) -> Void = { _ in }
     var topContent: AnyView? = nil
     var overrideLayout: ((Hub) -> MediaCarousel.Layout?)? = nil
+    @State private var artworkRefreshToken = UUID()
 
     private let landscapeHubIdentifiers: [String] = [
         "inprogress",
@@ -42,8 +43,14 @@ struct LibraryRecommendedView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 20)
         }
+        .id(artworkRefreshToken)
         .task {
             await viewModel.load()
+        }
+        .refreshable {
+            await viewModel.reload()
+            URLCache.shared.removeAllCachedResponses()
+            artworkRefreshToken = UUID()
         }
     }
 
