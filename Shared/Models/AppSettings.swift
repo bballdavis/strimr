@@ -1,5 +1,42 @@
 import Foundation
 
+enum DownloadQuality: String, Codable, CaseIterable, Equatable, Identifiable {
+    case original
+    case megabits20_1080p
+    case megabits12_1080p
+    case megabits10_720p
+    case megabits4_720p
+    case megabits3_720p
+    case megabits2_720p
+    case kilobits1500_480p
+    case kilobits720_328p
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .original:
+            return "Original"
+        case .megabits20_1080p:
+            return "20 Mbps 1080p"
+        case .megabits12_1080p:
+            return "12 Mbps 1080p"
+        case .megabits10_720p:
+            return "10 Mbps 720p"
+        case .megabits4_720p:
+            return "4 Mbps 720p"
+        case .megabits3_720p:
+            return "3 Mbps 720p"
+        case .megabits2_720p:
+            return "2 Mbps 720p"
+        case .kilobits1500_480p:
+            return "1.5 Mbps 480p"
+        case .kilobits720_328p:
+            return "0.7 Mbps 328p"
+        }
+    }
+}
+
 struct LibraryViewSettings: Codable, Equatable {
     var hiddenRecommendSectionIds: [String] = []
     var recommendSectionOrder: [String] = []
@@ -48,12 +85,14 @@ struct InterfaceSettings: Codable, Equatable {
 
 struct DownloadSettings: Codable, Equatable {
     var wifiOnly = true
+    var quality = DownloadQuality.original
 
     init() {}
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         wifiOnly = try container.decodeIfPresent(Bool.self, forKey: .wifiOnly) ?? true
+        quality = try container.decodeIfPresent(DownloadQuality.self, forKey: .quality) ?? .original
     }
 }
 

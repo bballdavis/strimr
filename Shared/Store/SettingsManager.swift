@@ -142,6 +142,11 @@ final class SettingsManager {
         persist()
     }
 
+    func setDownloadQuality(_ quality: DownloadQuality) {
+        settings.downloads.quality = quality
+        persist()
+    }
+
     private func persist() {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: storageKey)

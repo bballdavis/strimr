@@ -17,6 +17,25 @@ struct SettingsDownloadsView: View {
             } footer: {
                 Text("settings.downloads.wifiOnly.footer")
             }
+
+            Section {
+                Picker(
+                    "Download Quality",
+                    selection: Binding(
+                        get: { settingsManager.downloads.quality },
+                        set: { settingsManager.setDownloadQuality($0) }
+                    )
+                ) {
+                    ForEach(DownloadQuality.allCases) { quality in
+                        Text(quality.title).tag(quality)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+            } header: {
+                Text("Download Quality")
+            } footer: {
+                Text("Default is Original. This applies to future downloads.")
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("settings.downloads.title")
