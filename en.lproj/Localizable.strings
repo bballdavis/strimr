@@ -63,7 +63,7 @@
 "downloads.status.failed" = "Download failed";
 "downloads.status.interrupted" = "Download interrupted";
 "downloads.status.queued" = "Queued";
-"downloads.storage.device %@ %@" = "Device: %1$@ used of %2$@";
+"downloads.storage.device %@ %@" = "Storage used: %1$@ / %2$@";
 "downloads.storage.downloads %@" = "Downloads: %@";
 "downloads.storage.title" = "Storage";
 "downloads.title" = "Downloads";
