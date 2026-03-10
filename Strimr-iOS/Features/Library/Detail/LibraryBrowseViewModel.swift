@@ -75,8 +75,8 @@ final class LibraryBrowseViewModel {
 
     func refresh() async {
         reachedEnd = false
-        hasLoadedMeta = false
         nextPageStart = 0
+        browseItems = []
         await fetch(reset: true)
     }
 
@@ -145,13 +145,8 @@ final class LibraryBrowseViewModel {
                 await fetch(reset: false)
             }
         } catch {
-            guard !isCancellation(error) else { return }
             if reset {
-                if browseItems.isEmpty {
-                    resetState(error: error.localizedDescription)
-                } else {
-                    errorMessage = error.localizedDescription
-                }
+                resetState(error: error.localizedDescription)
             } else {
                 errorMessage = error.localizedDescription
             }
@@ -224,14 +219,5 @@ final class LibraryBrowseViewModel {
         isLoadingMore = false
         reachedEnd = false
         nextPageStart = 0
-    }
-
-    private func isCancellation(_ error: Error) -> Bool {
-        if error is CancellationError {
-            return true
-        }
-
-        let nsError = error as NSError
-        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 }
