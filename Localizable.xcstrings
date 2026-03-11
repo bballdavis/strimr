@@ -4,6 +4,9 @@
     "%@" : {
 
     },
+    "%@%%" : {
+
+    },
     "auth.profile.empty" : {
       "localizations" : {
         "en" : {
