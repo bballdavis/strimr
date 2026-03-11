@@ -48,8 +48,11 @@ struct PlaybackSettings: Codable, Equatable {
     var seekForwardSeconds = 10
     var player = PlaybackPlayer.mpv
     var subtitleScale = 100
+    var maxVolumePercent = 70
 
-    init() {}
+    init() {
+        normalize()
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -58,6 +61,16 @@ struct PlaybackSettings: Codable, Equatable {
         seekForwardSeconds = try container.decodeIfPresent(Int.self, forKey: .seekForwardSeconds) ?? 10
         player = try container.decodeIfPresent(PlaybackPlayer.self, forKey: .player) ?? .mpv
         subtitleScale = try container.decodeIfPresent(Int.self, forKey: .subtitleScale) ?? 100
+        maxVolumePercent = try container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 70
+        normalize()
+    }
+
+    mutating func normalize() {
+        maxVolumePercent = Self.clampVolumePercent(maxVolumePercent)
+    }
+
+    static func clampVolumePercent(_ value: Int) -> Int {
+        min(100, max(0, value))
     }
 }
 

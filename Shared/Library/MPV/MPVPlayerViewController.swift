@@ -190,6 +190,11 @@ final class MPVPlayerViewController: UIViewController {
         )
     }
 
+    func setVolume(_ volumePercent: Int) {
+        let clamped = PlaybackSettings.clampVolumePercent(volumePercent)
+        setDouble("volume", Double(clamped))
+    }
+
     func setPlaybackRate(_ rate: Float) {
         let clamped = max(0.1, Double(rate))
         setDouble("speed", clamped)

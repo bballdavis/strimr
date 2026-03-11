@@ -41,10 +41,12 @@ struct PlayerView: View {
         Double(settingsManager.playback.seekForwardSeconds)
     }
 
-    init(viewModel: PlayerViewModel, initialPlayer: InternalPlaybackPlayer, options: PlayerOptions) {
+    init(viewModel: PlayerViewModel, initialPlayer: InternalPlaybackPlayer, initialVolumePercent: Int, options: PlayerOptions) {
         _viewModel = State(initialValue: viewModel)
         activePlayer = initialPlayer
-        _playerCoordinator = State(initialValue: PlayerFactory.makeCoordinator(for: initialPlayer, options: options))
+        let coordinator = PlayerFactory.makeCoordinator(for: initialPlayer, options: options)
+        coordinator.setVolume(initialVolumePercent)
+        _playerCoordinator = State(initialValue: coordinator)
     }
 
     var body: some View {
@@ -175,6 +177,9 @@ struct PlayerView: View {
             terminationAlertMessage = newValue
             showingTerminationAlert = true
             playerCoordinator.pause()
+        }
+        .onChange(of: settingsManager.playback.maxVolumePercent) { _, newValue in
+            playerCoordinator.setVolume(newValue)
         }
         .onChange(of: watchTogetherViewModel.isInSession) { _, newValue in
             guard wasInWatchTogetherSession, !newValue else { return }

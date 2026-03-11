@@ -9,6 +9,7 @@ struct PlayerWrapper: View {
             PlayerView(
                 viewModel: viewModel,
                 initialPlayer: internalPlayer,
+                initialVolumePercent: settingsManager.playback.maxVolumePercent,
                 options: PlayerOptions(subtitleScale: settingsManager.playback.subtitleScale),
             )
             .transition(.opacity)

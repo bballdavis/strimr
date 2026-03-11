@@ -8,6 +8,7 @@ struct MPVPlayerView: UIViewControllerRepresentable {
         let mpv = MPVPlayerViewController(options: coordinator.options)
         mpv.playDelegate = coordinator
         mpv.playUrl = coordinator.playUrl
+        mpv.setVolume(coordinator.volumePercent)
         mpv.setPlaybackRate(coordinator.playbackRate)
 
         context.coordinator.player = mpv
@@ -49,6 +50,7 @@ struct MPVPlayerView: UIViewControllerRepresentable {
 
         @ObservationIgnored var playUrl: URL?
         @ObservationIgnored var options = PlayerOptions()
+        @ObservationIgnored var volumePercent: Int = 100
         @ObservationIgnored var playbackRate: Float = 1.0
         @ObservationIgnored var onPropertyChange: ((MPVPlayerViewController, PlayerProperty, Any?) -> Void)?
         @ObservationIgnored var onPlaybackEnded: (() -> Void)?
@@ -76,6 +78,11 @@ struct MPVPlayerView: UIViewControllerRepresentable {
 
         func seek(by delta: Double) {
             player?.seek(by: delta)
+        }
+
+        func setVolume(_ volumePercent: Int) {
+            self.volumePercent = PlaybackSettings.clampVolumePercent(volumePercent)
+            player?.setVolume(self.volumePercent)
         }
 
         func setPlaybackRate(_ rate: Float) {
@@ -114,6 +121,7 @@ struct MPVPlayerView: UIViewControllerRepresentable {
         }
 
         func fileLoaded() {
+            player?.setVolume(volumePercent)
             player?.setPlaybackRate(playbackRate)
             onMediaLoaded?()
         }

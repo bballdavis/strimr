@@ -8,6 +8,7 @@ struct VLCPlayerView: UIViewControllerRepresentable {
         let vlc = VLCPlayerViewController(options: coordinator.options)
         vlc.playDelegate = coordinator
         vlc.playUrl = coordinator.playUrl
+        vlc.setVolume(coordinator.volumePercent)
         vlc.setPlaybackRate(coordinator.playbackRate)
 
         context.coordinator.player = vlc
@@ -47,6 +48,7 @@ struct VLCPlayerView: UIViewControllerRepresentable {
 
         @ObservationIgnored var playUrl: URL?
         @ObservationIgnored var options = PlayerOptions()
+        @ObservationIgnored var volumePercent: Int = 100
         @ObservationIgnored var playbackRate: Float = 1.0
         @ObservationIgnored var onPropertyChange: ((VLCPlayerViewController, PlayerProperty, Any?) -> Void)?
         @ObservationIgnored var onPlaybackEnded: (() -> Void)?
@@ -74,6 +76,11 @@ struct VLCPlayerView: UIViewControllerRepresentable {
 
         func seek(by delta: Double) {
             player?.seek(by: delta)
+        }
+
+        func setVolume(_ volumePercent: Int) {
+            self.volumePercent = PlaybackSettings.clampVolumePercent(volumePercent)
+            player?.setVolume(self.volumePercent)
         }
 
         func setPlaybackRate(_ rate: Float) {
@@ -106,6 +113,7 @@ struct VLCPlayerView: UIViewControllerRepresentable {
         }
 
         func fileLoaded() {
+            player?.setVolume(volumePercent)
             player?.setPlaybackRate(playbackRate)
             onMediaLoaded?()
         }

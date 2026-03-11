@@ -78,6 +78,10 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
         seek(to: nextTime)
     }
 
+    func setVolume(_ volumePercent: Int) {
+        mediaPlayer.audio?.volume = Int32(PlaybackSettings.clampVolumePercent(volumePercent))
+    }
+
     func setPlaybackRate(_ rate: Float) {
         mediaPlayer.rate = max(0.1, rate)
     }

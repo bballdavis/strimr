@@ -258,6 +258,22 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         refreshStorageSummary()
     }
 
+    func reconcileArtworkMetadataIfNeeded(context _: PlexAPIContext) async {
+        var changed = false
+
+        for index in items.indices {
+            if items[index].metadata.artworkLayoutStyle == nil {
+                items[index].metadata.artworkLayoutStyle = items[index].metadata.type.defaultDownloadArtworkLayoutStyle
+                persistMetadataFile(for: items[index])
+                changed = true
+            }
+        }
+
+        if changed {
+            persistState()
+        }
+    }
+
     func setBackgroundEventsCompletionHandler(_ handler: @escaping () -> Void) {
         backgroundEventsCompletionHandler = handler
     }
