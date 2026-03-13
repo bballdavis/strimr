@@ -13,7 +13,7 @@ struct LibraryBrowseView: View {
     }
 
     private var cardWidth: CGFloat {
-        resolvedLayout == .landscape ? 200 : 165
+        resolvedLayout == .landscape ? 200 : 112
     }
 
     private var gridColumns: [GridItem] {
