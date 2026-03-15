@@ -18,6 +18,7 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
     var playUrl: URL?
     private var lastReportedTimeSeconds = -1.0
     private var hasNotifiedFileLoaded = false
+    private var hasLifecycleObservers = false
 
     init(options: PlayerOptions) {
         self.options = options
@@ -41,10 +42,39 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
         view.backgroundColor = .black
         mediaPlayer.drawable = view
         mediaPlayer.delegate = self
+        setupNotifications()
 
         if let url = playUrl {
             loadFile(url)
         }
+    }
+
+    private func setupNotifications() {
+        guard !hasLifecycleObservers else { return }
+        hasLifecycleObservers = true
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(suspendForInactivity),
+            name: UIApplication.willResignActiveNotification,
+            object: nil,
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(suspendForInactivity),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(suspendForInactivity),
+            name: UIApplication.protectedDataWillBecomeUnavailableNotification,
+            object: nil,
+        )
+    }
+
+    @objc private func suspendForInactivity() {
+        destruct()
     }
 
     func loadFile(_ url: URL) {
@@ -114,6 +144,8 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
     }
 
     func destruct() {
+        NotificationCenter.default.removeObserver(self)
+        hasLifecycleObservers = false
         mediaPlayer.stop()
         mediaPlayer.delegate = nil
         mediaPlayer.drawable = nil

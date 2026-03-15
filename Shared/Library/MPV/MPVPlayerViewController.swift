@@ -12,6 +12,7 @@ final class MPVPlayerViewController: UIViewController {
     var playDelegate: MPVPlayerDelegate?
     lazy var queue = DispatchQueue(label: "mpv", qos: .userInitiated)
     private let options: PlayerOptions
+    private var hasLifecycleObservers = false
 
     var playUrl: URL?
     var hdrAvailable: Bool = false
@@ -118,31 +119,32 @@ final class MPVPlayerViewController: UIViewController {
     }
 
     func setupNotification() {
+        guard !hasLifecycleObservers else { return }
+        hasLifecycleObservers = true
+
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(enterBackground),
+            selector: #selector(suspendForInactivity),
+            name: UIApplication.willResignActiveNotification,
+            object: nil,
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(suspendForInactivity),
             name: UIApplication.didEnterBackgroundNotification,
             object: nil,
         )
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(enterForeground),
-            name: UIApplication.willEnterForegroundNotification,
+            selector: #selector(suspendForInactivity),
+            name: UIApplication.protectedDataWillBecomeUnavailableNotification,
             object: nil,
         )
     }
 
-    @objc func enterBackground() {
-        // fix black screen issue when app enter foreground again
-        guard let mpv else { return }
+    @objc func suspendForInactivity() {
         pause()
-        checkError(mpv_set_option_string(mpv, "vid", "no"))
-    }
-
-    @objc func enterForeground() {
-        guard let mpv else { return }
-        checkError(mpv_set_option_string(mpv, "vid", "auto"))
-        play()
+        destruct()
     }
 
     func loadFile(
@@ -389,6 +391,7 @@ final class MPVPlayerViewController: UIViewController {
 
     func destruct() {
         NotificationCenter.default.removeObserver(self)
+        hasLifecycleObservers = false
         guard let mpv else { return }
 
         // Drop the wakeup callback to avoid mpv calling back into a deallocated controller.
