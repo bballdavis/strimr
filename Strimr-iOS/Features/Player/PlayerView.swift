@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PlayerView: View {
     @Environment(\.dismiss) private var dismiss
@@ -31,6 +32,10 @@ struct PlayerView: View {
     @State private var isShowingWatchTogetherExitPrompt = false
     @State private var wasInWatchTogetherSession = false
     @State private var activePlaybackURL: URL?
+    @State private var playerSessionID = UUID()
+    @State private var sessionRequiresReload = false
+    @State private var pendingRestartPosition: Double?
+    private let playerOptions: PlayerOptions
 
     private let controlsHideDelay: TimeInterval = 3.0
     private var seekBackwardInterval: Double {
@@ -44,6 +49,7 @@ struct PlayerView: View {
     init(viewModel: PlayerViewModel, initialPlayer: InternalPlaybackPlayer, initialVolumePercent: Int, options: PlayerOptions) {
         _viewModel = State(initialValue: viewModel)
         activePlayer = initialPlayer
+        playerOptions = options
         let coordinator = PlayerFactory.makeCoordinator(for: initialPlayer, options: options)
         coordinator.setVolume(initialVolumePercent)
         _playerCoordinator = State(initialValue: coordinator)
@@ -83,6 +89,7 @@ struct PlayerView: View {
                     handleMediaLoaded()
                 },
             )
+            .id(playerSessionID)
             .onAppear {
                 showControls(temporarily: true)
             }
@@ -167,6 +174,12 @@ struct PlayerView: View {
         }
         .onChange(of: bindableViewModel.playbackURL) { _, newURL in
             startPlaybackIfNeeded(url: newURL)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            prepareForSessionReload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+            prepareForSessionReload()
         }
         .onChange(of: bindableViewModel.position) { _, newValue in
             guard !isScrubbing else { return }
@@ -260,6 +273,11 @@ struct PlayerView: View {
     }
 
     private func togglePlayPause() {
+        if sessionRequiresReload {
+            restartPlaybackSession()
+            return
+        }
+
         let wasPaused = viewModel.isPaused
         playerCoordinator.togglePlayback()
         showControls(temporarily: true)
@@ -383,6 +401,14 @@ struct PlayerView: View {
         guard awaitingMediaLoad else { return }
         awaitingMediaLoad = false
         refreshTracks()
+        if let pendingRestartPosition, pendingRestartPosition > 0 {
+            playerCoordinator.seek(to: pendingRestartPosition)
+            timelinePosition = pendingRestartPosition
+            viewModel.position = pendingRestartPosition
+            self.pendingRestartPosition = nil
+            appliedResumeOffset = true
+            return
+        }
         applyResumeOffsetIfNeeded()
     }
 
@@ -416,6 +442,14 @@ struct PlayerView: View {
         guard let url else { return }
         guard activePlaybackURL != url else { return }
 
+        startPlayback(url: url, forceReload: false)
+    }
+
+    private func startPlayback(url: URL, forceReload: Bool) {
+        if forceReload {
+            recreatePlayerSessionController()
+        }
+
         activePlaybackURL = url
         appliedPreferredAudio = false
         appliedPreferredSubtitle = false
@@ -423,9 +457,46 @@ struct PlayerView: View {
         selectedSubtitleTrackID = nil
         appliedResumeOffset = false
         awaitingMediaLoad = true
+        sessionRequiresReload = false
         playerCoordinator.play(url)
         playerCoordinator.setPlaybackRate(playbackRate)
         showControls(temporarily: true)
+    }
+
+    private func prepareForSessionReload() {
+        guard activePlaybackURL != nil else { return }
+        guard !sessionRequiresReload else { return }
+
+        pendingRestartPosition = viewModel.position > 0 ? viewModel.position : pendingRestartPosition
+        awaitingMediaLoad = false
+        viewModel.isPaused = true
+        viewModel.isBuffering = false
+        sessionRequiresReload = true
+        showControls(temporarily: false)
+    }
+
+    private func restartPlaybackSession() {
+        guard let url = activePlaybackURL ?? viewModel.playbackURL else { return }
+
+        let wasPaused = viewModel.isPaused
+        startPlayback(url: url, forceReload: true)
+        watchTogetherViewModel.sendPlayPause(isCurrentlyPaused: wasPaused)
+    }
+
+    private func recreatePlayerSessionController() {
+        if watchTogetherViewModel.isInSession {
+            watchTogetherViewModel.detachPlayerCoordinator()
+        }
+
+        let coordinator = PlayerFactory.makeCoordinator(for: activePlayer, options: playerOptions)
+        coordinator.setVolume(settingsManager.playback.maxVolumePercent)
+        coordinator.setPlaybackRate(playbackRate)
+        playerCoordinator = coordinator
+        playerSessionID = UUID()
+
+        if watchTogetherViewModel.isInSession {
+            watchTogetherViewModel.attachPlayerCoordinator(coordinator)
+        }
     }
 
     private func showControls(temporarily: Bool) {

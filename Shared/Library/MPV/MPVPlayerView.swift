@@ -57,6 +57,7 @@ struct MPVPlayerView: UIViewControllerRepresentable {
         @ObservationIgnored var onMediaLoaded: (() -> Void)?
 
         func play(_ url: URL) {
+            playUrl = url
             player?.loadFile(url)
         }
 
