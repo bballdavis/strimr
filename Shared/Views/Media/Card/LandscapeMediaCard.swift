@@ -9,6 +9,8 @@ struct LandscapeMediaCard: View {
     let onLongPress: (() -> Void)?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\EnvironmentValues.preferredLandscapeArtworkKind)
+    private var preferredLandscapeArtworkKind: MediaImageViewModel.ArtworkKind?
 
     private let aspectRatio: CGFloat = 16 / 9
 
@@ -46,7 +48,7 @@ struct LandscapeMediaCard: View {
         MediaCard(
             size: CGSize(width: resolvedWidth, height: resolvedHeight),
             media: media,
-            artworkKind: .art,
+            artworkKind: preferredLandscapeArtworkKind ?? .art,
             showsLabels: showsLabels,
             onTap: onTap,
             onLongPress: onLongPress,
