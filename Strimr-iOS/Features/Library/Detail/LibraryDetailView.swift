@@ -90,6 +90,7 @@ struct LibraryDetailView: View {
                 )
             }
         }
+        .environment(\.preferredLandscapeArtworkKind, preferredLandscapeArtworkKind)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .navigationBarBackButtonHidden(true)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -120,12 +121,23 @@ struct LibraryDetailView: View {
     /// uses the "none" agent (e.g. YouTube, Home Videos), which have landscape content.
     /// All other library types (e.g. clips) also use landscape (letterbox).
     private var preferredCarouselLayout: MediaCarousel.Layout? {
-        // "none" agent libraries (YouTube, Home Videos, etc.) always use landscape
-        // cards even though Plex may declare their section type as "movie".
-        if library.isNoneAgentLibrary { return .landscape }
+        prefersLandscapeLibraryLayout ? .landscape : nil
+    }
+
+    private var preferredLandscapeArtworkKind: MediaImageViewModel.ArtworkKind? {
+        guard prefersLandscapeLibraryLayout else { return nil }
+        return .thumb
+    }
+
+    private var prefersLandscapeLibraryLayout: Bool {
+        if library.isNoneAgentLibrary {
+            return true
+        }
         switch library.type {
-        case .movie, .show: return nil          // let hub-level heuristic decide
-        default:            return .landscape   // letterbox for other video types
+        case .movie, .show:
+            return false
+        default:
+            return true
         }
     }
 
