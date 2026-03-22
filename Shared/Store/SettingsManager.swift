@@ -58,7 +58,7 @@ final class SettingsManager {
     }
 
     func setMaxVolumePercent(_ percent: Int) {
-        settings.playback.maxVolumePercent = max(0, min(100, percent))
+        settings.playback.maxVolumePercent = PlaybackSettings.clampVolumePercent(percent)
         persist()
     }
 
@@ -147,7 +147,13 @@ final class SettingsManager {
         persist()
     }
 
+    func setDownloadQuality(_ quality: DownloadQuality) {
+        settings.downloads.quality = quality
+        persist()
+    }
+
     private func persist() {
+        settings.playback.normalize()
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: storageKey)
     }

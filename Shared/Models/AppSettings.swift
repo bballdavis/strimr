@@ -1,16 +1,45 @@
 import Foundation
 
+enum DownloadQuality: String, Codable, CaseIterable, Equatable, Identifiable {
+    case original
+    case megabits20_1080p
+    case megabits12_1080p
+    case megabits10_720p
+    case megabits4_720p
+    case megabits3_720p
+    case megabits2_720p
+    case kilobits1500_480p
+    case kilobits720_328p
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .original:
+            return "Original"
+        case .megabits20_1080p:
+            return "20 Mbps 1080p"
+        case .megabits12_1080p:
+            return "12 Mbps 1080p"
+        case .megabits10_720p:
+            return "10 Mbps 720p"
+        case .megabits4_720p:
+            return "4 Mbps 720p"
+        case .megabits3_720p:
+            return "3 Mbps 720p"
+        case .megabits2_720p:
+            return "2 Mbps 720p"
+        case .kilobits1500_480p:
+            return "1.5 Mbps 480p"
+        case .kilobits720_328p:
+            return "0.7 Mbps 328p"
+        }
+    }
+}
+
 struct LibraryViewSettings: Codable, Equatable {
     var hiddenRecommendSectionIds: [String] = []
     var recommendSectionOrder: [String] = []
-
-    init() {}
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        hiddenRecommendSectionIds = try container.decodeIfPresent([String].self, forKey: .hiddenRecommendSectionIds) ?? []
-        recommendSectionOrder = try container.decodeIfPresent([String].self, forKey: .recommendSectionOrder) ?? []
-    }
 }
 
 struct PlaybackSettings: Codable, Equatable {
@@ -19,9 +48,11 @@ struct PlaybackSettings: Codable, Equatable {
     var seekForwardSeconds = 10
     var player = PlaybackPlayer.mpv
     var subtitleScale = 100
-    var maxVolumePercent = 100
+    var maxVolumePercent = 70
 
-    init() {}
+    init() {
+        normalize()
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -30,21 +61,27 @@ struct PlaybackSettings: Codable, Equatable {
         seekForwardSeconds = try container.decodeIfPresent(Int.self, forKey: .seekForwardSeconds) ?? 10
         player = try container.decodeIfPresent(PlaybackPlayer.self, forKey: .player) ?? .mpv
         subtitleScale = try container.decodeIfPresent(Int.self, forKey: .subtitleScale) ?? 100
-        maxVolumePercent = try container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 100
+        maxVolumePercent = try container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 70
+        normalize()
     }
 
-    static func clampVolumePercent(_ percent: Int) -> Int {
-        max(0, min(100, percent))
+    mutating func normalize() {
+        maxVolumePercent = Self.clampVolumePercent(maxVolumePercent)
+    }
+
+    static func clampVolumePercent(_ value: Int) -> Int {
+        min(100, max(0, value))
     }
 }
 
 struct InterfaceSettings: Codable, Equatable {
     var hiddenLibraryIds: [String] = []
     var navigationLibraryIds: [String] = []
+    var libraryViewSettingsByLibraryId: [String: LibraryViewSettings] = [:]
+    // Plinx fork: default false — collections are an opt-in feature for kids' context.
     var displayCollections = false
     var displayPlaylists = true
     var displaySeerrDiscoverTab = true
-    var libraryViewSettingsByLibraryId: [String: LibraryViewSettings] = [:]
 
     init() {}
 
@@ -52,21 +89,23 @@ struct InterfaceSettings: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         hiddenLibraryIds = try container.decodeIfPresent([String].self, forKey: .hiddenLibraryIds) ?? []
         navigationLibraryIds = try container.decodeIfPresent([String].self, forKey: .navigationLibraryIds) ?? []
+        libraryViewSettingsByLibraryId = try container.decodeIfPresent([String: LibraryViewSettings].self, forKey: .libraryViewSettingsByLibraryId) ?? [:]
         displayCollections = try container.decodeIfPresent(Bool.self, forKey: .displayCollections) ?? false
         displayPlaylists = try container.decodeIfPresent(Bool.self, forKey: .displayPlaylists) ?? true
         displaySeerrDiscoverTab = try container.decodeIfPresent(Bool.self, forKey: .displaySeerrDiscoverTab) ?? true
-        libraryViewSettingsByLibraryId = try container.decodeIfPresent([String: LibraryViewSettings].self, forKey: .libraryViewSettingsByLibraryId) ?? [:]
     }
 }
 
 struct DownloadSettings: Codable, Equatable {
     var wifiOnly = true
+    var quality = DownloadQuality.original
 
     init() {}
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         wifiOnly = try container.decodeIfPresent(Bool.self, forKey: .wifiOnly) ?? true
+        quality = try container.decodeIfPresent(DownloadQuality.self, forKey: .quality) ?? .original
     }
 }
 
