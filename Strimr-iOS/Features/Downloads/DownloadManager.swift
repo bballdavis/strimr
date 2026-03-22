@@ -313,6 +313,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             }
         }
         monitor.start(queue: monitorQueue)
+        // Seed the initial state synchronously so the view hierarchy never
+        // briefly shows online content when the app launches while offline.
+        // NWPathMonitor.currentPath is valid immediately after start().
+        let initialPath = monitor.currentPath
+        isOffline = initialPath.status != .satisfied
+        isOnWiFi = initialPath.usesInterfaceType(.wifi)
     }
 
     private func configureStorage() {
