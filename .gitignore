@@ -49,6 +49,10 @@ playground.xcworkspace
 
 Carthage/Build/
 
+# Build artifacts
+build/
+DerivedData/
+
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo.

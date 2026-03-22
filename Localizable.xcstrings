@@ -7,6 +7,9 @@
     "%@%%" : {
 
     },
+    "1" : {
+
+    },
     "auth.profile.empty" : {
       "localizations" : {
         "en" : {
@@ -625,13 +628,7 @@
     "Currently Active" : {
 
     },
-    "Default is Original. This applies to future downloads." : {
-
-    },
     "Default Server" : {
-
-    },
-    "Download Quality" : {
 
     },
     "downloads.action" : {
@@ -2422,6 +2419,9 @@
           }
         }
       }
+    },
+    "Library banner thumbnails" : {
+
     },
     "Library Views" : {
 
@@ -8247,6 +8247,9 @@
           }
         }
       }
+    },
+    "When refresh is off, banner art loads once per app launch. iPhone supports up to 3 thumbnails; iPad supports up to 5." : {
+
     }
   },
   "version" : "1.1"
