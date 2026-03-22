@@ -57,6 +57,11 @@ final class SettingsManager {
         persist()
     }
 
+    func setMaxVolumePercent(_ percent: Int) {
+        settings.playback.maxVolumePercent = max(0, min(100, percent))
+        persist()
+    }
+
     func updatePlayback(_ transform: (inout PlaybackSettings) -> Void) {
         transform(&settings.playback)
         persist()

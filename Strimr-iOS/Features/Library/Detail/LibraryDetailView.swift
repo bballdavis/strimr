@@ -61,7 +61,7 @@ struct LibraryDetailView: View {
                     onSelectMedia: onSelectMedia,
                     onLongPressMedia: onLongPressMedia,
                     topContent: scrollingTopContent,
-                    overrideLayout: preferredCarouselLayout,
+                    overrideLayout: { _ in preferredCarouselLayout },
                 )
             case .browse:
                 LibraryBrowseView(
@@ -69,7 +69,7 @@ struct LibraryDetailView: View {
                     onSelectMedia: onSelectMedia,
                     onLongPressMedia: onLongPressMedia,
                     topContent: scrollingTopContent,
-                    overrideLayout: preferredCarouselLayout,
+                    overrideLayout: { _ in preferredCarouselLayout },
                 )
             case .collections:
                 LibraryCollectionsView(
@@ -90,7 +90,6 @@ struct LibraryDetailView: View {
                 )
             }
         }
-        .environment(\.preferredLandscapeArtworkKind, preferredLandscapeArtworkKind)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .navigationBarBackButtonHidden(true)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -121,23 +120,12 @@ struct LibraryDetailView: View {
     /// uses the "none" agent (e.g. YouTube, Home Videos), which have landscape content.
     /// All other library types (e.g. clips) also use landscape (letterbox).
     private var preferredCarouselLayout: MediaCarousel.Layout? {
-        prefersLandscapeLibraryLayout ? .landscape : nil
-    }
-
-    private var preferredLandscapeArtworkKind: MediaImageViewModel.ArtworkKind? {
-        guard prefersLandscapeLibraryLayout else { return nil }
-        return .thumb
-    }
-
-    private var prefersLandscapeLibraryLayout: Bool {
-        if library.isNoneAgentLibrary {
-            return true
-        }
+        // "none" agent libraries (YouTube, Home Videos, etc.) always use landscape
+        // cards even though Plex may declare their section type as "movie".
+        if library.isNoneAgentLibrary { return .landscape }
         switch library.type {
-        case .movie, .show:
-            return false
-        default:
-            return true
+        case .movie, .show: return nil          // let hub-level heuristic decide
+        default:            return .landscape   // letterbox for other video types
         }
     }
 
