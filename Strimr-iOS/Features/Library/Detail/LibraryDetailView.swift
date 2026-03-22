@@ -53,50 +53,53 @@ struct LibraryDetailView: View {
     }
 
     var body: some View {
-        Group {
-            switch selectedTab {
-            case .recommended:
-                LibraryRecommendedView(
-                    viewModel: makeRecommendedViewModel(),
-                    onSelectMedia: onSelectMedia,
-                    onLongPressMedia: onLongPressMedia,
-                    topContent: scrollingTopContent,
-                    overrideLayout: { _ in preferredCarouselLayout },
-                )
-            case .browse:
-                LibraryBrowseView(
-                    viewModel: makeBrowseViewModel(),
-                    onSelectMedia: onSelectMedia,
-                    onLongPressMedia: onLongPressMedia,
-                    topContent: scrollingTopContent,
-                    overrideLayout: { _ in preferredCarouselLayout },
-                )
-            case .collections:
-                LibraryCollectionsView(
-                    viewModel: makeCollectionsViewModel(),
-                    onSelectMedia: onSelectMedia,
-                    onLongPressMedia: onLongPressMedia,
-                    topContent: scrollingTopContent,
-                )
-            case .playlists:
-                LibraryPlaylistsView(
-                    viewModel: LibraryPlaylistsViewModel(
-                        library: library,
-                        context: plexApiContext,
-                    ),
-                    onSelectMedia: onSelectMedia,
-                    onLongPressMedia: onLongPressMedia,
-                    topContent: scrollingTopContent,
-                )
+        tabContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .navigationBarBackButtonHidden(true)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .onChange(of: settingsManager.interface.displayCollections) { _, displayCollections in
+                if !displayCollections, selectedTab == .collections {
+                    selectedTab = .recommended
+                }
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .navigationBarBackButtonHidden(true)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .onChange(of: settingsManager.interface.displayCollections) { _, displayCollections in
-            if !displayCollections, selectedTab == .collections {
-                selectedTab = .recommended
-            }
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .recommended:
+            LibraryRecommendedView(
+                viewModel: makeRecommendedViewModel(),
+                onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia,
+                topContent: scrollingTopContent,
+                overrideLayout: { _ in preferredCarouselLayout },
+            )
+        case .browse:
+            LibraryBrowseView(
+                viewModel: makeBrowseViewModel(),
+                onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia,
+                topContent: scrollingTopContent,
+                overrideLayout: preferredCarouselLayout,
+            )
+        case .collections:
+            LibraryCollectionsView(
+                viewModel: makeCollectionsViewModel(),
+                onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia,
+                topContent: scrollingTopContent,
+            )
+        case .playlists:
+            LibraryPlaylistsView(
+                viewModel: LibraryPlaylistsViewModel(
+                    library: library,
+                    context: plexApiContext,
+                ),
+                onSelectMedia: onSelectMedia,
+                onLongPressMedia: onLongPressMedia,
+                topContent: scrollingTopContent,
+            )
         }
     }
 
