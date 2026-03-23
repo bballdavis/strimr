@@ -41,6 +41,10 @@ struct DownloadedMediaMetadata: Codable, Hashable {
     var guid: String
     var type: PlexItemType
     var sourceLibrarySectionID: Int?
+    /// The Plex agent string of the source library (e.g. "tv.plex.agents.none" for
+    /// YouTube / Home Videos / personal-media libraries).  Stored at download time so
+    /// offline content can be correctly categorised even when LibraryStore is empty.
+    var sourceLibraryAgent: String? = nil
     var artworkLayoutStyle: DownloadArtworkLayoutStyle?
     var title: String
     var summary: String?

@@ -186,6 +186,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 guid: mediaItem.guid,
                 type: mediaItem.type,
                 sourceLibrarySectionID: plexItem.librarySectionID,
+                sourceLibraryAgent: plexItem.librarySectionID.flatMap { librariesBySectionID[$0] }?.agent,
                 artworkLayoutStyle: preferredArtworkLayoutStyle(
                     for: plexItem,
                     librariesBySectionID: librariesBySectionID
@@ -304,6 +305,24 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         backgroundEventsCompletionHandler = handler
     }
 
+    /// Re-evaluate the current network path on the monitor queue and update
+    /// `isOffline` / `isOnWiFi`.  Safe to call from pull-to-refresh or anywhere
+    /// the app needs a definitive online/offline answer without waiting for the
+    /// next automatic `pathUpdateHandler` callback.
+    func recheckNetworkStatus() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            monitorQueue.async { [weak self] in
+                guard let self else { continuation.resume(); return }
+                let path = self.monitor.currentPath
+                Task { @MainActor [weak self] in
+                    self?.isOffline = path.status != .satisfied
+                    self?.isOnWiFi = path.usesInterfaceType(.wifi)
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
     private func startNetworkMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
@@ -312,13 +331,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 self.isOnWiFi = path.usesInterfaceType(.wifi)
             }
         }
+        // NWPathMonitor fires pathUpdateHandler immediately with the current path
+        // when started (per Apple docs), so no synchronous currentPath seed is
+        // needed here.  Reading currentPath synchronously before the monitor queue
+        // has run returns a stale "unsatisfied" default and can falsely set
+        // isOffline=true on startup, triggering spurious session hydration.
         monitor.start(queue: monitorQueue)
-        // Seed the initial state synchronously so the view hierarchy never
-        // briefly shows online content when the app launches while offline.
-        // NWPathMonitor.currentPath is valid immediately after start().
-        let initialPath = monitor.currentPath
-        isOffline = initialPath.status != .satisfied
-        isOnWiFi = initialPath.usesInterfaceType(.wifi)
     }
 
     private func configureStorage() {
