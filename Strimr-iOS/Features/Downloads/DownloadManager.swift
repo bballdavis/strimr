@@ -70,6 +70,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
     }
 
+    func markOfflineDueToConnectionFailure() {
+        isOffline = true
+        isOnWiFi = false
+    }
+
     var completedItems: [DownloadItem] {
         items.filter { $0.status == .completed }
     }
@@ -158,7 +163,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             guard let partPath = plexItem.media?.first?.parts.first?.key else { return }
 
             let mediaRepository = try MediaRepository(context: context)
-            guard let mediaURL = mediaRepository.mediaURL(path: partPath) else { return }
+            guard let mediaURL = mediaRepository.downloadURL(
+                path: partPath,
+                ratingKey: mediaItem.id,
+                quality: settingsManager.downloads.quality
+            ) else { return }
 
             let id = UUID().uuidString
             let folderURL = downloadsDirectory.appendingPathComponent(id, isDirectory: true)

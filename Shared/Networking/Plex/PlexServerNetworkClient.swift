@@ -32,7 +32,13 @@ final class PlexServerNetworkClient {
     ) async throws -> Response {
         let request = try buildRequest(path: path, queryItems: queryItems, method: method, headers: headers)
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            reportPlexConnectionUnavailableIfNeeded(for: error)
+            throw error
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlexAPIError.requestFailed(statusCode: -1)
         }
@@ -57,7 +63,13 @@ final class PlexServerNetworkClient {
     ) async throws {
         let request = try buildRequest(path: path, queryItems: queryItems, method: method, headers: headers)
 
-        let (_, response) = try await session.data(for: request)
+        let response: URLResponse
+        do {
+            (_, response) = try await session.data(for: request)
+        } catch {
+            reportPlexConnectionUnavailableIfNeeded(for: error)
+            throw error
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlexAPIError.requestFailed(statusCode: -1)
         }

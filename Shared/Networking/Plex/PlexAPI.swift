@@ -9,6 +9,38 @@ enum PlexAPIError: Error {
     case decodingFailed(Error)
 }
 
+extension Notification.Name {
+    static let plexConnectionUnavailable = Notification.Name("plex.connection.unavailable")
+}
+
+func isLikelyConnectionAvailabilityError(_ error: Error) -> Bool {
+    if let urlError = error as? URLError {
+        switch urlError.code {
+        case .notConnectedToInternet,
+             .networkConnectionLost,
+             .cannotFindHost,
+             .cannotConnectToHost,
+             .dnsLookupFailed,
+             .internationalRoamingOff,
+             .callIsActive,
+             .dataNotAllowed,
+             .secureConnectionFailed,
+             .timedOut:
+            return true
+        default:
+            return false
+        }
+    }
+
+    let nsError = error as NSError
+    return nsError.domain == NSURLErrorDomain && isLikelyConnectionAvailabilityError(URLError(_nsError: nsError))
+}
+
+func reportPlexConnectionUnavailableIfNeeded(for error: Error) {
+    guard isLikelyConnectionAvailabilityError(error) else { return }
+    NotificationCenter.default.post(name: .plexConnectionUnavailable, object: nil)
+}
+
 protocol QueryItemConvertible {
     var queryItems: [URLQueryItem] { get }
 }

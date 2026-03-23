@@ -35,6 +35,40 @@ enum DownloadQuality: String, Codable, CaseIterable, Equatable, Identifiable {
             return "0.7 Mbps 328p"
         }
     }
+
+    var transcodeProfile: DownloadTranscodeProfile? {
+        switch self {
+        case .original:
+            return nil
+        case .megabits20_1080p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 20_000, videoBitrateKbps: 20_000, width: 1920, height: 1080)
+        case .megabits12_1080p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 12_000, videoBitrateKbps: 12_000, width: 1920, height: 1080)
+        case .megabits10_720p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 10_000, videoBitrateKbps: 10_000, width: 1280, height: 720)
+        case .megabits4_720p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 4_000, videoBitrateKbps: 4_000, width: 1280, height: 720)
+        case .megabits3_720p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 3_000, videoBitrateKbps: 3_000, width: 1280, height: 720)
+        case .megabits2_720p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 2_000, videoBitrateKbps: 2_000, width: 1280, height: 720)
+        case .kilobits1500_480p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 1_500, videoBitrateKbps: 1_500, width: 848, height: 480)
+        case .kilobits720_328p:
+            return DownloadTranscodeProfile(maxVideoBitrateKbps: 720, videoBitrateKbps: 720, width: 640, height: 360)
+        }
+    }
+}
+
+struct DownloadTranscodeProfile: Equatable {
+    let maxVideoBitrateKbps: Int
+    let videoBitrateKbps: Int
+    let width: Int
+    let height: Int
+
+    var resolution: String {
+        "\(width)x\(height)"
+    }
 }
 
 struct LibraryViewSettings: Codable, Equatable {
