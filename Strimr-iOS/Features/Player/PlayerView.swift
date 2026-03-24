@@ -400,6 +400,7 @@ struct PlayerView: View {
     private func handleMediaLoaded() {
         guard awaitingMediaLoad else { return }
         awaitingMediaLoad = false
+        viewModel.isBuffering = false
         refreshTracks()
         if let pendingRestartPosition, pendingRestartPosition > 0 {
             playerCoordinator.seek(to: pendingRestartPosition)
@@ -458,6 +459,7 @@ struct PlayerView: View {
         appliedResumeOffset = false
         awaitingMediaLoad = true
         sessionRequiresReload = false
+        viewModel.isBuffering = !viewModel.isLocalPlayback
         playerCoordinator.play(url)
         playerCoordinator.setPlaybackRate(playbackRate)
         showControls(temporarily: true)

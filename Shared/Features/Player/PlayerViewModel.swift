@@ -81,10 +81,15 @@ final class PlayerViewModel {
         shouldResumeFromOffsetFlag
     }
 
+    var isLocalPlayback: Bool {
+        localPlaybackURL != nil
+    }
+
     func load() async {
         if let localPlaybackURL, let localMedia {
             media = localMedia
             playbackURL = localPlaybackURL
+            isBuffering = false
             errorMessage = nil
             return
         }
@@ -142,11 +147,18 @@ final class PlayerViewModel {
             isPaused = (data as? Bool) ?? false
             stateChanged = previousState != playbackState
         case .pausedForCache:
-            isBuffering = (data as? Bool) ?? false
+            if isLocalPlayback {
+                isBuffering = false
+            } else {
+                isBuffering = (data as? Bool) ?? false
+            }
             stateChanged = previousState != playbackState
         case .timePos:
             guard !isScrubbing else { return }
             position = data as? Double ?? 0.0
+            if isLocalPlayback {
+                isBuffering = false
+            }
             reportTimeline(state: playbackState)
         case .duration:
             duration = data as? Double
