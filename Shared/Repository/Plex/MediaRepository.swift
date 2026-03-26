@@ -30,33 +30,19 @@ final class MediaRepository {
     }
 
     func downloadURL(path: String, ratingKey: String, quality: DownloadQuality) -> URL? {
-        guard let profile = quality.transcodeProfile else {
-            return mediaURL(path: path)
-        }
-
-        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
-        components?.path = "/video/:/transcode/universal/start.mkv"
-        components?.queryItems = [
-            URLQueryItem(name: "path", value: "/library/metadata/\(ratingKey)"),
-            URLQueryItem(name: "mediaIndex", value: "0"),
-            URLQueryItem(name: "partIndex", value: "0"),
-            URLQueryItem(name: "protocol", value: "http"),
-            URLQueryItem(name: "session", value: "strimr-download-\(UUID().uuidString.lowercased())"),
-            URLQueryItem(name: "directPlay", value: "0"),
-            URLQueryItem(name: "directStream", value: "1"),
-            URLQueryItem(name: "fastSeek", value: "1"),
-            URLQueryItem(name: "copyts", value: "1"),
-            URLQueryItem(name: "offset", value: "0"),
-            URLQueryItem(name: "subtitles", value: "none"),
-            URLQueryItem(name: "videoQuality", value: "100"),
-            URLQueryItem(name: "videoBitrate", value: String(profile.videoBitrateKbps)),
-            URLQueryItem(name: "maxVideoBitrate", value: String(profile.maxVideoBitrateKbps)),
-            URLQueryItem(name: "videoResolution", value: profile.resolution),
-            URLQueryItem(name: "X-Plex-Client-Identifier", value: clientIdentifier),
-            URLQueryItem(name: "X-Plex-Platform", value: "iOS"),
-            URLQueryItem(name: "X-Plex-Product", value: "Plinx"),
-            URLQueryItem(name: "X-Plex-Token", value: authToken),
-        ]
-        return components?.url
+        // Downloads always use the direct media part URL regardless of the quality
+        // setting.  The Plex transcoding endpoint (/video/:/transcode/universal/start.mkv)
+        // is a streaming-session API that requires a live session cookie carried in
+        // request headers; iOS background URLSession download tasks cannot provide
+        // those headers after app suspension, causing Plex to return 400 Bad Request.
+        // The downloaded file is then saved as the video (89-byte HTML error body),
+        // silently completing with corrupt data.
+        //
+        // Until a proper multi-segment transcoding-download flow is implemented,
+        // the direct part URL is the only reliable mechanism for background downloads.
+        // The quality parameter is intentionally unused here but retained in the
+        // signature so callers require no source changes when transcoding is added.
+        _ = quality // reserved for future transcoding-download implementation
+        return mediaURL(path: path)
     }
 }

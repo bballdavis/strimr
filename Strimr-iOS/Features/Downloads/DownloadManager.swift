@@ -95,7 +95,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         guard item.status == .completed else { return nil }
         let folderURL = downloadsDirectory.appendingPathComponent(item.id, isDirectory: true)
         let fileURL = folderURL.appendingPathComponent(item.metadata.videoFileName, isDirectory: false)
-        return FileManager.default.fileExists(atPath: fileURL.path) ? fileURL : nil
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        // Reject files that are too small to be a valid video.  A previous
+        // missing HTTP-status check could have saved error response bodies
+        // (e.g. a 400 Bad Request HTML page, ~89 bytes) as the video file.
+        // 10 KB is a safe floor — even a 1-second clip exceeds this.
+        let minimumVideoBytes: Int64 = 10_000
+        let onDiskSize = (try? FileManager.default.attributesOfItem(atPath: fileURL.path))
+            .flatMap { $0[.size] as? Int64 } ?? 0
+        guard onDiskSize >= minimumVideoBytes else { return nil }
+        return fileURL
     }
 
     func localPosterURL(for item: DownloadItem) -> URL? {
@@ -588,6 +597,22 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     private func completeDownload(task: URLSessionDownloadTask, stagedLocation: URL) async {
         guard let index = itemIndex(for: task) else { return }
+
+        // An HTTP error response (e.g. 400 Bad Request from a stale transcode
+        // session, or 401 Unauthorized) must NOT be saved as a completed video.
+        // URLSession.downloadTask calls didFinishDownloadingTo for ANY response
+        // regardless of status code, so we validate here before accepting it.
+        if let httpResponse = task.response as? HTTPURLResponse,
+           !(200 ..< 300 ~= httpResponse.statusCode) {
+            // Discard the staged file (it's an error body, not a video).
+            try? FileManager.default.removeItem(at: stagedLocation)
+            items[index].status = .failed
+            items[index].taskIdentifier = nil
+            items[index].errorMessage = "Download failed: HTTP \(httpResponse.statusCode)"
+            persistState()
+            return
+        }
+
         let item = items[index]
         let destination = resolveDownloadDestination(for: item, response: task.response)
 
