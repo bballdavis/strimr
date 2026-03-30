@@ -145,6 +145,7 @@ struct DownloadsView: View {
     private func statusView(for item: DownloadItem) -> some View {
         switch item.status {
         case .queued:
+            fileSizeLabel(for: item)
             Text("downloads.status.queued")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -158,14 +159,32 @@ struct DownloadsView: View {
                     .foregroundStyle(.secondary)
             }
         case .completed:
-            let size = item.metadata.fileSize ?? item.totalBytes
-            Text("downloads.status.completed \(formattedBytes(size))")
+            VStack(alignment: .leading, spacing: 2) {
+                fileSizeLabel(for: item)
+                Label {
+                    Text("downloads.status.completed.short")
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            }
         case .failed:
+            fileSizeLabel(for: item)
             Text("downloads.status.failed")
                 .font(.caption)
                 .foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder
+    private func fileSizeLabel(for item: DownloadItem) -> some View {
+        let size = item.metadata.fileSize ?? (item.totalBytes > 0 ? item.totalBytes : nil)
+        if let size {
+            Text(formattedBytes(size))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
         }
     }
 

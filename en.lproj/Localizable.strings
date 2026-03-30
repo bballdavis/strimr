@@ -59,6 +59,7 @@
 "downloads.sheet.submitting" = "Downloading...";
 "downloads.sheet.title" = "Download Episodes";
 "downloads.status.completed %@" = "Downloaded • %@";
+"downloads.status.completed.short" = "Downloaded";
 "downloads.status.downloading %lld" = "Downloading • %lld%%";
 "downloads.status.failed" = "Download failed";
 "downloads.status.interrupted" = "Download interrupted";

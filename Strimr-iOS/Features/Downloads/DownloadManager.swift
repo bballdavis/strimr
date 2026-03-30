@@ -327,18 +327,45 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     /// `isOffline` / `isOnWiFi`.  Safe to call from pull-to-refresh or anywhere
     /// the app needs a definitive online/offline answer without waiting for the
     /// next automatic `pathUpdateHandler` callback.
-    func recheckNetworkStatus() async {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+    ///
+    /// - Parameter serverProbe: An optional async closure that performs a
+    ///   lightweight connectivity check against the application's server
+    ///   (e.g. a Plex health-check ping).  When provided and the OS network
+    ///   path is satisfied, the probe is also awaited; `isOffline` is only
+    ///   cleared to `false` when the probe returns `true`.  This prevents a
+    ///   false-positive "back online" flip when the device has WiFi but the
+    ///   server itself is still unreachable — which would cause the app to
+    ///   briefly flash a loading screen before re-entering offline mode.
+    func recheckNetworkStatus(serverProbe: (() async -> Bool)? = nil) async {
+        let pathResult: (isSatisfied: Bool, isWiFi: Bool) = await withCheckedContinuation { continuation in
             monitorQueue.async { [weak self] in
-                guard let self else { continuation.resume(); return }
-                let path = self.monitor.currentPath
-                Task { @MainActor [weak self] in
-                    self?.isOffline = path.status != .satisfied
-                    self?.isOnWiFi = path.usesInterfaceType(.wifi)
-                    continuation.resume()
+                guard let self else {
+                    continuation.resume(returning: (false, false))
+                    return
                 }
+                let path = self.monitor.currentPath
+                continuation.resume(returning: (
+                    path.status == .satisfied,
+                    path.usesInterfaceType(.wifi)
+                ))
             }
         }
+
+        let networkAvailable = pathResult.isSatisfied
+        let isWiFi = pathResult.isWiFi
+
+        // When the OS network path is satisfied and a server probe was supplied,
+        // run it to guard against the case where the device has connectivity
+        // but the Plex server is still unreachable.
+        let serverReachable: Bool
+        if networkAvailable, let probe = serverProbe {
+            serverReachable = await probe()
+        } else {
+            serverReachable = networkAvailable
+        }
+
+        isOffline = !serverReachable
+        isOnWiFi = isWiFi && serverReachable
     }
 
     private func startNetworkMonitoring() {

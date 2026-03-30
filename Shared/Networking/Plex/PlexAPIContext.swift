@@ -141,6 +141,52 @@ final class PlexAPIContext {
         authTokenServer = nil
     }
 
+    /// Performs a lightweight reachability check against the known Plex
+    /// endpoints.  When a server connection URL is available it probes the
+    /// local/remote server directly first; if that probe fails it falls back
+    /// to probing `plex.tv` (the first network call during hydration).
+    /// When no server URL is cached (e.g. after `reset()`) it probes `plex.tv`
+    /// directly.
+    ///
+    /// Returns `true` if any probe target responds within the timeout.
+    /// Returns `false` only when all probes fail (network error or timeout).
+    ///
+    /// This is intentionally a best-effort check used by the offline
+    /// pull-to-refresh path to avoid prematurely flipping `isOffline = false`
+    /// when the device has WiFi but Plex infrastructure is still unreachable,
+    /// which would cause a brief loading-screen flash before re-entering
+    /// offline mode.
+    func canReachServer() async -> Bool {
+        if let serverURL = baseURLServer {
+            // Probe the last-known server connection first.
+            var request = URLRequest(url: serverURL)
+            if let token = authTokenServer {
+                request.setValue(token, forHTTPHeaderField: "X-Plex-Token")
+            }
+            request.timeoutInterval = 5
+            if let (_, response) = try? await URLSession.shared.data(for: request),
+               let http = response as? HTTPURLResponse,
+               http.statusCode < 500 {
+                return true
+            }
+            // Server URL probe failed — server may have moved or IP changed.
+            // Fall through to plex.tv so hydration can re-resolve the address.
+        }
+
+        // Probe plex.tv to verify cloud connectivity.  Hydration requires
+        // plex.tv for user/resource lookups and cannot proceed without it.
+        guard let plexTV = URL(string: "https://plex.tv") else { return false }
+        var fallbackRequest = URLRequest(url: plexTV)
+        fallbackRequest.timeoutInterval = 5
+        if let (_, response) = try? await URLSession.shared.data(for: fallbackRequest),
+           let http = response as? HTTPURLResponse,
+           http.statusCode < 500 {
+            return true
+        }
+
+        return false
+    }
+
     private func connectionKey(for resource: PlexCloudResource) -> String {
         "\(connectionKeyPrefix).\(resource.clientIdentifier)"
     }
