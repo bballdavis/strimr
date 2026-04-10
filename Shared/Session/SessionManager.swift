@@ -46,6 +46,14 @@ final class SessionManager {
     }
 
     func hydrate() async {
+        if OfflineReconnectUITestFixtures.isActive() {
+            authToken = "ui-test-token"
+            user = nil
+            plexServer = nil
+            status = .ready
+            return
+        }
+
         status = .hydrating
         do {
             await context.waitForBootstrap()

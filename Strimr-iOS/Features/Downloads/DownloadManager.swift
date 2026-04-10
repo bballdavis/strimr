@@ -337,17 +337,22 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     ///   server itself is still unreachable — which would cause the app to
     ///   briefly flash a loading screen before re-entering offline mode.
     func recheckNetworkStatus(serverProbe: (() async -> Bool)? = nil) async {
-        let pathResult: (isSatisfied: Bool, isWiFi: Bool) = await withCheckedContinuation { continuation in
-            monitorQueue.async { [weak self] in
-                guard let self else {
-                    continuation.resume(returning: (false, false))
-                    return
+        let pathResult: (isSatisfied: Bool, isWiFi: Bool)
+        if OfflineReconnectUITestFixtures.isActive() {
+            pathResult = (true, true)
+        } else {
+            pathResult = await withCheckedContinuation { continuation in
+                monitorQueue.async { [weak self] in
+                    guard let self else {
+                        continuation.resume(returning: (false, false))
+                        return
+                    }
+                    let path = self.monitor.currentPath
+                    continuation.resume(returning: (
+                        path.status == .satisfied,
+                        path.usesInterfaceType(.wifi)
+                    ))
                 }
-                let path = self.monitor.currentPath
-                continuation.resume(returning: (
-                    path.status == .satisfied,
-                    path.usesInterfaceType(.wifi)
-                ))
             }
         }
 
@@ -369,6 +374,8 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     private func startNetworkMonitoring() {
+        guard !OfflineReconnectUITestFixtures.isActive() else { return }
+
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
             Task { @MainActor in
