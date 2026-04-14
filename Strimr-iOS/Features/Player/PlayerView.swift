@@ -35,6 +35,7 @@ struct PlayerView: View {
     @State private var playerSessionID = UUID()
     @State private var sessionRequiresReload = false
     @State private var pendingRestartPosition: Double?
+    @State private var bufferingTimeoutTask: Task<Void, Never>?
     private let playerOptions: PlayerOptions
 
     private let controlsHideDelay: TimeInterval = 3.0
@@ -162,6 +163,8 @@ struct PlayerView: View {
         .onDisappear {
             viewModel.handleStop()
             hideControlsWorkItem?.cancel()
+            bufferingTimeoutTask?.cancel()
+            bufferingTimeoutTask = nil
             playerCoordinator.destruct()
             AppDelegate.orientationLock = .all
             isRotationLocked = false
@@ -401,6 +404,8 @@ struct PlayerView: View {
         guard awaitingMediaLoad else { return }
         awaitingMediaLoad = false
         viewModel.isBuffering = false
+        bufferingTimeoutTask?.cancel()
+        bufferingTimeoutTask = nil
         refreshTracks()
         if let pendingRestartPosition, pendingRestartPosition > 0 {
             playerCoordinator.seek(to: pendingRestartPosition)
@@ -480,9 +485,27 @@ struct PlayerView: View {
     private func restartPlaybackSession() {
         guard let url = activePlaybackURL ?? viewModel.playbackURL else { return }
 
+        // Immediately reflect the loading state so the button shows a spinner
+        // instead of a stale play/pause icon.
+        viewModel.isPaused = false
+        viewModel.isBuffering = true
+
         let wasPaused = viewModel.isPaused
         startPlayback(url: url, forceReload: true)
         watchTogetherViewModel.sendPlayPause(isCurrentlyPaused: wasPaused)
+
+        // If the player is still buffering after 15 seconds, retry once with
+        // a fresh URL (the Plex token may have expired during sleep).
+        bufferingTimeoutTask?.cancel()
+        bufferingTimeoutTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            guard !Task.isCancelled, viewModel.isBuffering else { return }
+
+            // One retry — use the latest URL from the view model in case the
+            // original contained an expired token.
+            let retryURL = viewModel.playbackURL ?? url
+            startPlayback(url: retryURL, forceReload: true)
+        }
     }
 
     private func recreatePlayerSessionController() {

@@ -103,6 +103,9 @@ final class SignInViewModel {
         pollTask?.cancel()
 
         pollTask = Task {
+            var pollInterval: UInt64 = 5_000_000_000 // start at 5 seconds
+            let maxInterval: UInt64 = 15_000_000_000 // cap at 15 seconds
+
             while !Task.isCancelled, isAuthenticating {
                 do {
                     let authRepository = AuthRepository(context: plexContext)
@@ -129,7 +132,8 @@ final class SignInViewModel {
                     ErrorReporter.capture(error)
                 }
 
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                try? await Task.sleep(nanoseconds: pollInterval)
+                pollInterval = min(pollInterval + 2_000_000_000, maxInterval)
             }
         }
     }

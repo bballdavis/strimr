@@ -15,7 +15,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     private(set) var lastErrorMessage: String?
 
     @ObservationIgnored private let settingsManager: SettingsManager
-    @ObservationIgnored private let monitor = NWPathMonitor()
+    @ObservationIgnored private var monitor: NWPathMonitor?
     @ObservationIgnored private let monitorQueue = DispatchQueue(label: "strimr.downloads.network-monitor")
     @ObservationIgnored private var backgroundEventsCompletionHandler: (() -> Void)?
     @ObservationIgnored private var progressByTaskIdentifier: [Int: Double] = [:]
@@ -373,10 +373,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         isOnWiFi = isWiFi && serverReachable
     }
 
-    private func startNetworkMonitoring() {
+    func startNetworkMonitoring() {
         guard !OfflineReconnectUITestFixtures.isActive() else { return }
+        guard monitor == nil else { return }
 
-        monitor.pathUpdateHandler = { [weak self] path in
+        let newMonitor = NWPathMonitor()
+        newMonitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
             Task { @MainActor in
                 self.isOffline = path.status != .satisfied
@@ -388,7 +390,17 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         // needed here.  Reading currentPath synchronously before the monitor queue
         // has run returns a stale "unsatisfied" default and can falsely set
         // isOffline=true on startup, triggering spurious session hydration.
-        monitor.start(queue: monitorQueue)
+        newMonitor.start(queue: monitorQueue)
+        monitor = newMonitor
+    }
+
+    func stopNetworkMonitoring() {
+        monitor?.cancel()
+        monitor = nil
+    }
+
+    deinit {
+        monitor?.cancel()
     }
 
     private func configureStorage() {
