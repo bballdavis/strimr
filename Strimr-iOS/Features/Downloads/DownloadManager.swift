@@ -341,13 +341,19 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         if OfflineReconnectUITestFixtures.isActive() {
             pathResult = (true, true)
         } else {
+            // Capture monitor on the @MainActor before hopping to monitorQueue.
+            // Reading self.monitor from a background DispatchQueue while it is a
+            // @MainActor-isolated mutable optional is a data race that can return
+            // nil even when the monitor is running, causing recheckNetworkStatus to
+            // incorrectly report the network as unavailable.
+            let capturedMonitor = monitor
             pathResult = await withCheckedContinuation { continuation in
-                monitorQueue.async { [weak self] in
-                    guard let self else {
+                monitorQueue.async {
+                    guard let m = capturedMonitor else {
                         continuation.resume(returning: (false, false))
                         return
                     }
-                    let path = self.monitor.currentPath
+                    let path = m.currentPath
                     continuation.resume(returning: (
                         path.status == .satisfied,
                         path.usesInterfaceType(.wifi)

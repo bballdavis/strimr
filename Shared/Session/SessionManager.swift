@@ -168,6 +168,16 @@ final class SessionManager {
         context.removeServer()
     }
 
+    func bootstrapDirectServerSession(
+        resource: PlexCloudResource,
+        token: String,
+        setAsDefault: Bool = true
+    ) async {
+        authToken = token
+        context.setAuthToken(token)
+        await selectServer(resource, setAsDefault: setAsDefault)
+    }
+
     private func bootstrapAuthenticatedSession(
         with token: String,
         allowProfileSelection: Bool,
