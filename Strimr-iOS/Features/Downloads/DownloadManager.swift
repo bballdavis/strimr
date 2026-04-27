@@ -337,28 +337,23 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     ///   server itself is still unreachable — which would cause the app to
     ///   briefly flash a loading screen before re-entering offline mode.
     func recheckNetworkStatus(serverProbe: (() async -> Bool)? = nil) async {
-        let pathResult: (isSatisfied: Bool, isWiFi: Bool)
-        if OfflineReconnectUITestFixtures.isActive() {
-            pathResult = (true, true)
-        } else {
-            // Capture monitor on the @MainActor before hopping to monitorQueue.
-            // Reading self.monitor from a background DispatchQueue while it is a
-            // @MainActor-isolated mutable optional is a data race that can return
-            // nil even when the monitor is running, causing recheckNetworkStatus to
-            // incorrectly report the network as unavailable.
-            let capturedMonitor = monitor
-            pathResult = await withCheckedContinuation { continuation in
-                monitorQueue.async {
-                    guard let m = capturedMonitor else {
-                        continuation.resume(returning: (false, false))
-                        return
-                    }
-                    let path = m.currentPath
-                    continuation.resume(returning: (
-                        path.status == .satisfied,
-                        path.usesInterfaceType(.wifi)
-                    ))
+        // Capture monitor on the @MainActor before hopping to monitorQueue.
+        // Reading self.monitor from a background DispatchQueue while it is a
+        // @MainActor-isolated mutable optional is a data race that can return
+        // nil even when the monitor is running, causing recheckNetworkStatus to
+        // incorrectly report the network as unavailable.
+        let capturedMonitor = monitor
+        let pathResult: (isSatisfied: Bool, isWiFi: Bool) = await withCheckedContinuation { continuation in
+            monitorQueue.async {
+                guard let m = capturedMonitor else {
+                    continuation.resume(returning: (false, false))
+                    return
                 }
+                let path = m.currentPath
+                continuation.resume(returning: (
+                    path.status == .satisfied,
+                    path.usesInterfaceType(.wifi)
+                ))
             }
         }
 
@@ -380,7 +375,6 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     func startNetworkMonitoring() {
-        guard !OfflineReconnectUITestFixtures.isActive() else { return }
         guard monitor == nil else { return }
 
         let newMonitor = NWPathMonitor()
