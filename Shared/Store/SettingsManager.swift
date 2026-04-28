@@ -62,6 +62,11 @@ final class SettingsManager {
         persist()
     }
 
+    func setPauseWhenScreenTurnsOff(_ enabled: Bool) {
+        settings.playback.pauseWhenScreenTurnsOff = enabled
+        persist()
+    }
+
     func updatePlayback(_ transform: (inout PlaybackSettings) -> Void) {
         transform(&settings.playback)
         persist()

@@ -178,10 +178,8 @@ struct PlayerView: View {
         .onChange(of: bindableViewModel.playbackURL) { _, newURL in
             startPlaybackIfNeeded(url: newURL)
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-            prepareForSessionReload()
-        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+            guard settingsManager.playback.pauseWhenScreenTurnsOff else { return }
             prepareForSessionReload()
         }
         .onChange(of: bindableViewModel.position) { _, newValue in

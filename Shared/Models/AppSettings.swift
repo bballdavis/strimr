@@ -83,6 +83,7 @@ struct PlaybackSettings: Codable, Equatable {
     var player = PlaybackPlayer.mpv
     var subtitleScale = 100
     var maxVolumePercent = 70
+    var pauseWhenScreenTurnsOff = true
 
     init() {
         normalize()
@@ -96,6 +97,7 @@ struct PlaybackSettings: Codable, Equatable {
         player = try container.decodeIfPresent(PlaybackPlayer.self, forKey: .player) ?? .mpv
         subtitleScale = try container.decodeIfPresent(Int.self, forKey: .subtitleScale) ?? 100
         maxVolumePercent = try container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 70
+        pauseWhenScreenTurnsOff = try container.decodeIfPresent(Bool.self, forKey: .pauseWhenScreenTurnsOff) ?? true
         normalize()
     }
 
