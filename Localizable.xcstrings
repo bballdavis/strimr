@@ -10,6 +10,9 @@
     "1" : {
 
     },
+    "Applies to future downloads. Original keeps the source file when possible; other options request a server-side transcode before saving offline." : {
+
+    },
     "auth.profile.empty" : {
       "localizations" : {
         "en" : {
@@ -631,6 +634,12 @@
     "Default Server" : {
 
     },
+    "Download Quality" : {
+
+    },
+    "Downloaded video unavailable" : {
+
+    },
     "downloads.action" : {
       "localizations" : {
         "en" : {
@@ -1000,6 +1009,7 @@
       }
     },
     "downloads.status.completed %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7082,6 +7092,9 @@
           }
         }
       }
+    },
+    "This download does not currently have a local file to play." : {
+
     },
     "Toggle sections on/off and drag to reorder." : {
 
