@@ -92,11 +92,35 @@ struct MediaDetailHeaderSection: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(viewModel.media.primaryLabel)
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
+            if let titleLogoURL = viewModel.titleLogoURL {
+                GeometryReader { proxy in
+                    let targetWidth = min(max(proxy.size.width * 0.35, 160), 560)
+                    HStack {
+                        Spacer(minLength: 0)
+                        AsyncImage(url: titleLogoURL) { phase in
+                            switch phase {
+                            case let .success(image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: targetWidth)
+                                    .frame(maxHeight: 140)
+                            case .empty:
+                                ProgressView()
+                                    .controlSize(.small)
+                            case .failure:
+                                titleText
+                            @unknown default:
+                                titleText
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+                .frame(height: 150)
+            } else {
+                titleText
+            }
 
             if let secondary = viewModel.media.secondaryLabel {
                 Text(secondary)
@@ -110,6 +134,14 @@ struct MediaDetailHeaderSection: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var titleText: some View {
+        Text(viewModel.media.primaryLabel)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .foregroundStyle(.primary)
+            .lineLimit(2)
     }
 
     private var badgesSection: some View {

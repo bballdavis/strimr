@@ -10,6 +10,8 @@ final class MediaDetailViewModel {
     var media: PlayableMediaItem
     var onDeckItem: MediaItem?
     var heroImageURL: URL?
+    var titleLogoURL: URL?
+    var titleBannerURL: URL?
     var isLoading = false
     var errorMessage: String?
     var backdropGradient: [Color] = []
@@ -64,6 +66,7 @@ final class MediaDetailViewModel {
             {
                 media = playable
                 cast = castMembers(from: item)
+                resolveBrandingAssets(from: item)
                 resolveArtwork()
                 resolveGradient()
             }
@@ -158,8 +161,15 @@ final class MediaDetailViewModel {
 
         heroImageURL = media.artPath.flatMap {
             imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
+        } ?? media.mediaItem.grandparentArtPath.flatMap {
+            imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
+        } ?? media.mediaItem.parentThumbPath.flatMap {
+            imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
         } ?? media.thumbPath.flatMap {
             imageRepository.transcodeImageURL(path: $0, width: 1400, height: 800)
+        } ?? titleBannerURL
+        if titleBannerURL == nil {
+            titleBannerURL = heroImageURL
         }
         resolveGradient()
     }
@@ -466,6 +476,27 @@ final class MediaDetailViewModel {
                 character: character,
                 thumbPath: role.thumb,
             )
+        }
+    }
+
+    private func resolveBrandingAssets(from item: PlexItem) {
+        let images = item.images ?? []
+        guard let imageRepository = try? ImageRepository(context: context) else {
+            titleLogoURL = nil
+            titleBannerURL = nil
+            return
+        }
+
+        titleLogoURL = images.first { image in
+            image.type.localizedCaseInsensitiveContains("logo")
+        }.flatMap { image in
+            imageRepository.transcodeImageURL(path: image.url.path, width: 400, height: 200)
+        }
+
+        titleBannerURL = images.first { image in
+            image.type.localizedCaseInsensitiveContains("banner")
+        }.flatMap { image in
+            imageRepository.transcodeImageURL(path: image.url.path, width: 800, height: 160)
         }
     }
 
