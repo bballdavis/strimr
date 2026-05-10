@@ -1,14 +1,28 @@
 import SwiftUI
 
 struct LibraryBrowseView: View {
+    @Environment(\.preferredLandscapeArtworkKind) private var preferredLandscapeArtworkKind
+
     @State var viewModel: LibraryBrowseViewModel
     let onSelectMedia: (MediaDisplayItem) -> Void
 
     @FocusState private var focusedCharacterId: String?
 
-    private let gridColumns = [
-        GridItem(.adaptive(minimum: 200, maximum: 200), spacing: 32),
-    ]
+    private var usesLandscapeCards: Bool {
+        preferredLandscapeArtworkKind != nil
+    }
+
+    private var cardWidth: CGFloat {
+        usesLandscapeCards ? 320 : 200
+    }
+
+    private var cardHeight: CGFloat? {
+        usesLandscapeCards ? (cardWidth / (16.0 / 9.0)) : nil
+    }
+
+    private var gridColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: cardWidth, maximum: cardWidth), spacing: 32)]
+    }
 
     init(
         viewModel: LibraryBrowseViewModel,
@@ -39,11 +53,17 @@ struct LibraryBrowseView: View {
                                     if let item = viewModel.itemsByIndex[index] {
                                         switch item {
                                         case let .media(media):
-                                            PortraitMediaCard(media: media, width: 200, showsLabels: true) {
-                                                onSelectMedia(media)
+                                            if usesLandscapeCards {
+                                                LandscapeMediaCard(media: media, width: cardWidth, showsLabels: true) {
+                                                    onSelectMedia(media)
+                                                }
+                                            } else {
+                                                PortraitMediaCard(media: media, width: cardWidth, showsLabels: true) {
+                                                    onSelectMedia(media)
+                                                }
                                             }
                                         case let .folder(folder):
-                                            FolderCard(title: folder.title, width: 200, showsLabels: true) {
+                                            FolderCard(title: folder.title, height: cardHeight, width: cardWidth, showsLabels: true) {
                                                 viewModel.enterFolder(folder)
                                             }
                                         }

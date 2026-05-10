@@ -53,7 +53,12 @@ struct FolderCard: View {
             }
             .frame(width: resolvedWidth, height: resolvedHeight)
             #if os(tvOS)
-                .scaleEffect(isFocused ? 1.12 : 1)
+                .scaleEffect(isFocused ? 1.08 : 1)
+                .shadow(color: isFocused ? Color.accentColor.opacity(0.72) : .clear, radius: isFocused ? 22 : 0)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isFocused ? Color.accentColor.opacity(0.95) : .clear, lineWidth: isFocused ? 2.5 : 0)
+                }
                 .animation(.easeOut(duration: 0.15), value: isFocused)
             #endif
 
@@ -65,6 +70,7 @@ struct FolderCard: View {
         }
         .frame(width: resolvedWidth, alignment: .leading)
         #if os(tvOS)
+            .focusEffectDisabled()
             .focusable()
             .focused($isFocused)
             .onPlayPauseCommand(perform: onTap)

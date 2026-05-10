@@ -59,7 +59,14 @@ struct MediaHeroBackgroundView: View {
 
 struct MediaHeroContentView: View {
     let media: MediaItem
-    private let summaryLineLimit = 3
+
+    private var summaryLineLimit: Int {
+        #if os(tvOS)
+        2
+        #else
+        3
+        #endif
+    }
 
     var body: some View {
         heroContent
@@ -68,12 +75,12 @@ struct MediaHeroContentView: View {
     private var heroContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(media.primaryLabel)
-                .font(.title2.bold())
+                .font(heroTitleFont)
                 .lineLimit(2)
 
             if let secondary = media.secondaryLabel, media.type != .movie, media.type != .show {
                 Text(secondary)
-                    .font(.headline)
+                    .font(heroSecondaryFont)
                     .foregroundStyle(.brandSecondary)
             }
 
@@ -82,7 +89,7 @@ struct MediaHeroContentView: View {
 
             if let summary = media.summary, !summary.isEmpty {
                 Text(summary)
-                    .font(.callout)
+                    .font(heroSummaryFont)
                     .foregroundStyle(.brandSecondary)
                     .lineLimit(summaryLineLimit)
                     .frame(minHeight: summaryLineHeight * CGFloat(summaryLineLimit), alignment: .top)
@@ -91,7 +98,35 @@ struct MediaHeroContentView: View {
     }
 
     private var summaryLineHeight: CGFloat {
+        #if os(tvOS)
+        UIFont.preferredFont(forTextStyle: .footnote).lineHeight
+        #else
         UIFont.preferredFont(forTextStyle: .callout).lineHeight
+        #endif
+    }
+
+    private var heroTitleFont: Font {
+        #if os(tvOS)
+        .title3.bold()
+        #else
+        .title2.bold()
+        #endif
+    }
+
+    private var heroSecondaryFont: Font {
+        #if os(tvOS)
+        .subheadline
+        #else
+        .headline
+        #endif
+    }
+
+    private var heroSummaryFont: Font {
+        #if os(tvOS)
+        .footnote
+        #else
+        .callout
+        #endif
     }
 
     @ViewBuilder
@@ -103,7 +138,7 @@ struct MediaHeroContentView: View {
                     Text(items[index])
                 }
             }
-            .font(.subheadline)
+            .font(metadataFont)
             .foregroundStyle(.brandSecondary)
         }
     }
@@ -117,10 +152,26 @@ struct MediaHeroContentView: View {
                     Text(genre)
                 }
             }
-            .font(.caption)
+            .font(genresFont)
             .foregroundStyle(.brandSecondary)
             .lineLimit(1)
         }
+    }
+
+    private var metadataFont: Font {
+        #if os(tvOS)
+        .footnote
+        #else
+        .subheadline
+        #endif
+    }
+
+    private var genresFont: Font {
+        #if os(tvOS)
+        .caption2
+        #else
+        .caption
+        #endif
     }
 
     private var metadataItems: [String] {

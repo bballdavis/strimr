@@ -18,11 +18,18 @@ struct MediaCard: View {
         media.viewProgressPercentage.map { $0 / 100 }
     }
 
+    private let artworkCornerRadius: CGFloat = 14
+
     var body: some View {
         VStack(alignment: .leading, spacing: labelSpacing) {
             artwork
             #if os(tvOS)
-            .scaleEffect(isFocused ? 1.12 : 1)
+            .scaleEffect(isFocused ? 1.08 : 1)
+            .shadow(color: isFocused ? Color.accentColor.opacity(0.72) : .clear, radius: isFocused ? 22 : 0)
+            .overlay {
+                RoundedRectangle(cornerRadius: artworkCornerRadius, style: .continuous)
+                    .stroke(isFocused ? Color.accentColor.opacity(0.95) : .clear, lineWidth: isFocused ? 2.5 : 0)
+            }
             .animation(.easeOut(duration: 0.15), value: isFocused)
             #endif
 
@@ -60,6 +67,7 @@ struct MediaCard: View {
         }
         .frame(width: size.width, alignment: .leading)
         #if os(tvOS)
+            .focusEffectDisabled()
             .focusable()
             .focused($isFocused)
             .onChange(of: isFocused) { _, focused in
@@ -85,18 +93,29 @@ struct MediaCard: View {
         )
         .frame(width: size.width, height: size.height)
         .clipShape(
-            RoundedRectangle(cornerRadius: 14, style: .continuous),
+            RoundedRectangle(cornerRadius: artworkCornerRadius, style: .continuous),
         )
         .overlay(alignment: .topTrailing) {
+            #if !os(tvOS)
             WatchStatusBadge(media: media)
+            #endif
         }
         .overlay(alignment: .bottomLeading) {
             if let progress {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-                    .tint(.brandPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.28))
+                        .frame(width: size.width)
+                    Rectangle()
+                        .fill(.brandPrimary)
+                        .frame(width: size.width * progress)
+                }
+                .frame(width: size.width, height: 8)
+                .clipShape(RoundedRectangle(cornerRadius: artworkCornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: artworkCornerRadius, style: .continuous)
+                        .stroke(Color.black.opacity(0.7), lineWidth: 1)
+                }
             }
         }
     }
