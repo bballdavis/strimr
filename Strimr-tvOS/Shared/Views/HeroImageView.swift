@@ -48,8 +48,9 @@ struct HeroMaskView: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: .black, location: 0.0),
-                .init(color: .black, location: 0.25),
+                .init(color: .clear, location: 0.0),
+                .init(color: .black, location: 0.16),
+                .init(color: .black, location: 0.58),
                 .init(color: .clear, location: 1.0),
             ],
             startPoint: .top,
@@ -59,7 +60,7 @@ struct HeroMaskView: View {
             LinearGradient(
                 stops: [
                     .init(color: .black, location: 0.0),
-                    .init(color: .black, location: 0.25),
+                    .init(color: .black, location: 0.20),
                     .init(color: .clear, location: 1.0),
                 ],
                 startPoint: .trailing,
