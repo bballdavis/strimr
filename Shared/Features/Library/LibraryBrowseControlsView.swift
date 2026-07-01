@@ -195,12 +195,14 @@ private struct LibraryBrowsePillButton: View {
     let showsDisclosure: Bool
     let action: () -> Void
 
+    @Environment(\.isFocused) private var isFocused
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.semibold))
                 }
                 Text(title)
                     .font(.subheadline)
@@ -211,19 +213,48 @@ private struct LibraryBrowsePillButton: View {
                         .opacity(0.7)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(minHeight: 52)
             .background(
-                Capsule(style: .continuous)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.18) : Color.gray.opacity(0.12)),
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(backgroundColor)
             )
             .overlay {
-                Capsule(style: .continuous)
-                    .stroke(isSelected ? Color.brandPrimary : Color.gray.opacity(0.25), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(borderColor, lineWidth: isFocused ? 2 : 1.2)
             }
-            .foregroundStyle(isSelected ? Color.brandPrimary : Color.primary)
+            .shadow(color: shadowColor, radius: isFocused ? 14 : 4)
+            .scaleEffect(isFocused ? 1.05 : (isSelected ? 1.02 : 1.0))
+            .foregroundStyle(foregroundColor)
+            .animation(.easeOut(duration: 0.12), value: isFocused)
+            .animation(.easeOut(duration: 0.12), value: isSelected)
         }
+        .focusEffectDisabled()
         .buttonStyle(.plain)
+    }
+
+    private var foregroundColor: Color {
+        if isSelected { return .white }
+        return isFocused ? .white : .primary
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return Color.brandPrimary.opacity(isFocused ? 0.72 : 0.56)
+        }
+        return Color.white.opacity(isFocused ? 0.12 : 0.07)
+    }
+
+    private var borderColor: Color {
+        if isSelected {
+            return Color.brandPrimary.opacity(isFocused ? 1.0 : 0.82)
+        }
+        return isFocused ? Color.brandPrimary.opacity(0.88) : Color.white.opacity(0.22)
+    }
+
+    private var shadowColor: Color {
+        (isFocused || isSelected) ? Color.brandPrimary.opacity(isFocused ? 0.58 : 0.28) : .clear
     }
 }
 
