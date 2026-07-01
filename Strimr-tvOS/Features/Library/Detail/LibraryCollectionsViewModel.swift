@@ -17,8 +17,17 @@ final class LibraryCollectionsViewModel {
     var sectionCharacters: [SectionCharacter] = []
     var isLoading = false
     var errorMessage: String?
+
+    /// Optional per-item filter applied after each page loads.
+    /// When set, tvOS collections use compact sequential loading so filtered-out
+    /// raw Plex rows do not leave unfocusable holes in the grid.
+    var itemFilter: ((MediaDisplayItem) -> Bool)? = nil
+
     private var loadedPageStarts: Set<Int> = []
     private var loadingPageStarts: Set<Int> = []
+    private var rawLoadedCount = 0
+    private var reachedEnd = false
+    private var isLoadingFilteredPage = false
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
@@ -36,14 +45,26 @@ final class LibraryCollectionsViewModel {
 
     func load() async {
         guard itemsByIndex.isEmpty else { return }
+        resetState()
         isLoading = true
         defer { isLoading = false }
-        await fetchCharactersIfNeeded()
-        await loadPage(start: 0)
+        if itemFilter != nil {
+            await loadFilteredNextPage()
+        } else {
+            await fetchCharactersIfNeeded()
+            await loadPage(start: 0)
+        }
     }
 
     func loadPagesAround(index: Int) async {
         guard index >= 0 else { return }
+        if itemFilter != nil {
+            if index >= max(totalItemCount - 8, 0) {
+                await loadFilteredNextPage()
+            }
+            return
+        }
+
         let pageStart = max(0, (index / pageSize) * pageSize)
         if itemsByIndex[index] == nil,
            loadedPageStarts.contains(pageStart),
@@ -64,6 +85,7 @@ final class LibraryCollectionsViewModel {
     }
 
     private func fetchCharactersIfNeeded() async {
+        guard itemFilter == nil else { return }
         guard sectionCharacters.isEmpty else { return }
         guard let sectionId = library.sectionId else { return }
         guard let sectionRepository = try? SectionRepository(context: context) else { return }
@@ -141,6 +163,52 @@ final class LibraryCollectionsViewModel {
         }
     }
 
+    private func loadFilteredNextPage() async {
+        guard !reachedEnd, !isLoadingFilteredPage else { return }
+        guard let sectionId = library.sectionId else {
+            resetState(error: String(localized: "errors.missingLibraryIdentifier"))
+            return
+        }
+        guard let sectionRepository = try? SectionRepository(context: context) else {
+            resetState(error: String(localized: "errors.selectServer.browseLibrary"))
+            return
+        }
+
+        errorMessage = nil
+        isLoadingFilteredPage = true
+        defer { isLoadingFilteredPage = false }
+
+        do {
+            while !reachedEnd {
+                let response = try await sectionRepository.getSectionCollections(
+                    sectionId: sectionId,
+                    includeCollections: true,
+                    pagination: PlexPagination(start: rawLoadedCount, size: pageSize),
+                )
+
+                let rawItems = (response.mediaContainer.metadata ?? [])
+                    .compactMap(MediaDisplayItem.init)
+                let filteredItems = itemFilter.map { rawItems.filter($0) } ?? rawItems
+                let total = response.mediaContainer.totalSize ?? (rawLoadedCount + rawItems.count)
+
+                rawLoadedCount += rawItems.count
+                reachedEnd = rawLoadedCount >= total || rawItems.isEmpty
+
+                let displayStart = itemsByIndex.count
+                for (offset, item) in filteredItems.enumerated() {
+                    itemsByIndex[displayStart + offset] = item
+                }
+                totalItemCount = itemsByIndex.count
+
+                if !filteredItems.isEmpty || reachedEnd {
+                    break
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func resetState(error: String? = nil) {
         itemsByIndex = [:]
         totalItemCount = 0
@@ -149,5 +217,8 @@ final class LibraryCollectionsViewModel {
         isLoading = false
         loadedPageStarts = []
         loadingPageStarts = []
+        rawLoadedCount = 0
+        reachedEnd = false
+        isLoadingFilteredPage = false
     }
 }

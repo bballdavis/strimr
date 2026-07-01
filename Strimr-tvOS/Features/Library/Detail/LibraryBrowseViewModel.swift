@@ -25,10 +25,18 @@ final class LibraryBrowseViewModel {
     var errorMessage: String?
     var controls: LibraryBrowseControlsViewModel
 
+    /// Optional per-item filter applied after each page loads.
+    /// When set, tvOS browse uses compact sequential loading so filtered-out
+    /// raw Plex rows do not leave unfocusable holes in the grid.
+    var itemFilter: ((MediaDisplayItem) -> Bool)? = nil
+
     private var loadedPageStarts: Set<Int> = []
     private var loadingPageStarts: Set<Int> = []
     private var folderStack: [FolderBreadcrumb] = []
     private var hasLoadedMeta = false
+    private var rawLoadedCount = 0
+    private var reachedEnd = false
+    private var isLoadingFilteredPage = false
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
@@ -68,6 +76,13 @@ final class LibraryBrowseViewModel {
 
     func loadPagesAround(index: Int) async {
         guard index >= 0 else { return }
+        if itemFilter != nil {
+            if index >= max(totalItemCount - 8, 0) {
+                await loadFilteredNextPage()
+            }
+            return
+        }
+
         let pageStart = max(0, (index / pageSize) * pageSize)
         if itemsByIndex[index] == nil,
            loadedPageStarts.contains(pageStart),
@@ -109,11 +124,16 @@ final class LibraryBrowseViewModel {
         resetState()
         isLoading = true
         defer { isLoading = false }
-        await loadPage(start: 0)
-        await fetchCharactersIfNeeded()
+        if itemFilter != nil {
+            await loadFilteredNextPage()
+        } else {
+            await loadPage(start: 0)
+            await fetchCharactersIfNeeded()
+        }
     }
 
     private func fetchCharactersIfNeeded() async {
+        guard itemFilter == nil else { return }
         guard sectionCharacters.isEmpty else { return }
         guard supportsSectionCharacters else { return }
         guard let sectionId = library.sectionId else { return }
@@ -122,7 +142,7 @@ final class LibraryBrowseViewModel {
         do {
             let endpoint = resolvedEndpoint(sectionId: sectionId)
             guard let firstCharacterEndpoint = firstCharacterEndpoint(from: endpoint) else { return }
-            let includeCollections = settingsManager.interface.displayCollections ? true : nil
+            let includeCollections = includeCollectionsForBrowse
             let queryItems = controls.buildQueryItems(
                 baseItems: endpoint.queryItems,
                 includeCollections: includeCollections,
@@ -181,7 +201,7 @@ final class LibraryBrowseViewModel {
 
         do {
             let endpoint = resolvedEndpoint(sectionId: sectionId)
-            let includeCollections = settingsManager.interface.displayCollections ? true : nil
+            let includeCollections = includeCollectionsForBrowse
             let includeMeta = !hasLoadedMeta
             let queryItems = controls.buildQueryItems(
                 baseItems: endpoint.queryItems,
@@ -214,6 +234,89 @@ final class LibraryBrowseViewModel {
         }
     }
 
+    private func loadFilteredNextPage() async {
+        guard !reachedEnd, !isLoadingFilteredPage else { return }
+        guard let sectionId = library.sectionId else {
+            resetState(error: String(localized: "errors.missingLibraryIdentifier"))
+            return
+        }
+        guard let sectionRepository = try? SectionRepository(context: context) else {
+            resetState(error: String(localized: "errors.selectServer.browseLibrary"))
+            return
+        }
+
+        errorMessage = nil
+        isLoadingFilteredPage = true
+        defer { isLoadingFilteredPage = false }
+
+        do {
+            while !reachedEnd {
+                let endpoint = resolvedEndpoint(sectionId: sectionId)
+                let includeMeta = !hasLoadedMeta
+                let queryItems = controls.buildQueryItems(
+                    baseItems: endpoint.queryItems,
+                    includeCollections: includeCollectionsForBrowse,
+                    includeMeta: includeMeta,
+                )
+
+                let response = try await sectionRepository.getSectionBrowseItems(
+                    path: endpoint.path,
+                    queryItems: queryItems,
+                    pagination: PlexPagination(start: rawLoadedCount, size: pageSize),
+                )
+
+                if includeMeta, let meta = response.mediaContainer.meta {
+                    controls.applyMeta(meta)
+                    hasLoadedMeta = true
+                }
+
+                let rawItems = (response.mediaContainer.metadata ?? [])
+                    .compactMap(mapBrowseItem)
+                let filteredItems = filteredBrowseItems(rawItems)
+                let total = response.mediaContainer.totalSize ?? (rawLoadedCount + rawItems.count)
+
+                rawLoadedCount += rawItems.count
+                reachedEnd = rawLoadedCount >= total || rawItems.isEmpty
+
+                let displayStart = itemsByIndex.count
+                for (offset, item) in filteredItems.enumerated() {
+                    itemsByIndex[displayStart + offset] = item
+                }
+                totalItemCount = itemsByIndex.count
+
+                if !filteredItems.isEmpty || reachedEnd {
+                    break
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private var includeCollectionsForBrowse: Bool? {
+        if library.isNoneAgentLibrary {
+            return settingsManager.interface.displayCollections ? true : nil
+        }
+        switch library.type {
+        case .movie, .show:
+            return false
+        default:
+            return settingsManager.interface.displayCollections ? true : nil
+        }
+    }
+
+    private func filteredBrowseItems(_ items: [LibraryBrowseItem]) -> [LibraryBrowseItem] {
+        guard let itemFilter else { return items }
+        return items.filter { item in
+            switch item {
+            case .folder:
+                return true
+            case let .media(media):
+                return itemFilter(media)
+            }
+        }
+    }
+
     private func resolvedEndpoint(sectionId: Int) -> PlexEndpoint {
         if let currentFolderEndpoint {
             return currentFolderEndpoint
@@ -236,12 +339,12 @@ final class LibraryBrowseViewModel {
 
     private var defaultTypeQueryValue: String? {
         switch library.type {
-        case .movie:
+        case .movie where !library.isNoneAgentLibrary:
             "1"
         case .show:
             "2"
         default:
-            "1,2"
+            nil
         }
     }
 
@@ -283,5 +386,9 @@ final class LibraryBrowseViewModel {
         isLoading = false
         loadedPageStarts = []
         loadingPageStarts = []
+        hasLoadedMeta = false
+        rawLoadedCount = 0
+        reachedEnd = false
+        isLoadingFilteredPage = false
     }
 }

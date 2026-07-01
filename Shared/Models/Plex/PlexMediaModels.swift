@@ -240,6 +240,52 @@ struct PlexMedia: Codable, Equatable {
     }
 }
 
+struct PlexFlexibleBool: Codable, Equatable {
+    let value: Bool
+
+    init(_ value: Bool) {
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let boolValue = try? container.decode(Bool.self) {
+            value = boolValue
+            return
+        }
+        if let stringValue = try? container.decode(String.self) {
+            switch stringValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "1", "true", "yes":
+                value = true
+            case "0", "false", "no":
+                value = false
+            default:
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Expected a boolean-like string"
+                )
+            }
+            return
+        }
+        if let intValue = try? container.decode(Int.self) {
+            value = intValue != 0
+            return
+        }
+        throw DecodingError.typeMismatch(
+            Bool.self,
+            DecodingError.Context(
+                codingPath: decoder.codingPath,
+                debugDescription: "Expected Bool, String, or Int"
+            )
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
+    }
+}
+
 struct PlexItem: Codable, Equatable {
     // Base fields
     let ratingKey: String
@@ -323,7 +369,7 @@ struct PlexItem: Codable, Equatable {
     // Playlist
     let composite: String?
     let playlistType: String?
-    let smart: Bool?
+    let smart: PlexFlexibleBool?
 
     private enum CodingKeys: String, CodingKey {
         case ratingKey, key, guid, librarySectionID, type, title, summary, thumb, art, year, viewOffset, lastViewedAt, viewCount
