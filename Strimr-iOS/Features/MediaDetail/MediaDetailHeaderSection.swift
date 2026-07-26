@@ -7,6 +7,7 @@ struct MediaDetailHeaderSection: View {
     @Environment(DownloadManager.self) private var downloadManager
     @Environment(PlexAPIContext.self) private var context
     @Environment(SharePlayCoordinator.self) private var sharePlayCoordinator
+    @Environment(\.sharePlayPresentationPolicy) private var sharePlayPresentationPolicy
     @Bindable var viewModel: MediaDetailViewModel
     @Binding var isSummaryExpanded: Bool
     let heroHeight: CGFloat
@@ -289,7 +290,9 @@ struct MediaDetailHeaderSection: View {
 
             downloadButton
             shuffleButton
-            sharePlayButton
+            if sharePlayPresentationPolicy == .enabled {
+                sharePlayButton
+            }
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
