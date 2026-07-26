@@ -4,6 +4,7 @@ import SwiftUI
 struct MediaDetailTVView: View {
     @EnvironmentObject private var coordinator: MainCoordinator
     @Environment(SharePlayCoordinator.self) private var sharePlayCoordinator
+    @Environment(\.sharePlayPresentationPolicy) private var sharePlayPresentationPolicy
     @Environment(\.scenePhase) private var scenePhase
     @State var viewModel: MediaDetailViewModel
     @State private var focusedMedia: MediaItem?
@@ -129,7 +130,9 @@ struct MediaDetailTVView: View {
 
             shuffleButton
 
-            sharePlayButton
+            if sharePlayPresentationPolicy == .enabled {
+                sharePlayButton
+            }
 
             watchToggleButton
 
