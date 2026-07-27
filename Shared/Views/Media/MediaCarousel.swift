@@ -47,6 +47,7 @@ struct MediaCarousel: View {
         }
         .mouseDragScrolling()
         #if os(tvOS)
+            .scrollClipDisabled()
             .focusSection()
         #endif
     }

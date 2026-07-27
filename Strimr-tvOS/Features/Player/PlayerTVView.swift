@@ -36,6 +36,7 @@ struct PlayerTVView: View {
     @State private var shouldResumeAfterMediaLoad = false
     @State private var shouldPauseAfterMediaLoad = false
     @FocusState private var focusedPlayerSurface: PlayerFocusTarget?
+    private let isPlaybackAuthorized: (PlexItem) -> Bool
 
     private let controlsHideDelay: TimeInterval = 3.0
     private let seekFeedbackDelay: TimeInterval = 1.2
@@ -51,9 +52,11 @@ struct PlayerTVView: View {
     init(
         viewModel: PlayerViewModel,
         onExit: @escaping () -> Void,
+        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
     ) {
         _viewModel = State(initialValue: viewModel)
         self.onExit = onExit
+        self.isPlaybackAuthorized = isPlaybackAuthorized
     }
 
     var body: some View {
@@ -246,7 +249,6 @@ struct PlayerTVView: View {
                     isScrubbing: isScrubbing,
                     onShowAudioSettings: showAudioSettings,
                     onShowSubtitleSettings: showSubtitleSettings,
-                    onShowSpeedSettings: showSpeedSettings,
                     onSeekBackward: { jump(by: -seekBackwardInterval) },
                     onPlayPause: togglePlayPause,
                     onSeekForward: { jump(by: seekForwardInterval) },
@@ -295,12 +297,6 @@ struct PlayerTVView: View {
                 selectedTrackID: selectedSubtitleTrackID,
                 showOffOption: true,
                 onSelect: selectSubtitleTrack(_:),
-                onClose: { activeSettingsSheet = nil },
-            )
-        case .speed:
-            PlayerSpeedSelectionView(
-                selectedRate: playbackRate,
-                onSelect: selectPlaybackRate(_:),
                 onClose: { activeSettingsSheet = nil },
             )
         }
@@ -352,11 +348,6 @@ struct PlayerTVView: View {
     private func showSubtitleSettings() {
         refreshTracks()
         activeSettingsSheet = .subtitle
-        showControls(temporarily: true)
-    }
-
-    private func showSpeedSettings() {
-        activeSettingsSheet = .speed
         showControls(temporarily: true)
     }
 
@@ -432,12 +423,6 @@ struct PlayerTVView: View {
         Task {
             await viewModel.persistStreamSelection(for: track)
         }
-    }
-
-    private func selectPlaybackRate(_ rate: Float) {
-        playbackRate = rate
-        playerController.setPlaybackRate(rate)
-        showControls(temporarily: true)
     }
 
     private func jump(by seconds: Double) {
@@ -777,6 +762,13 @@ struct PlayerTVView: View {
     }
 
     private func startPlayback(of episode: PlexItem) async {
+        guard isPlaybackAuthorized(episode) else {
+            await MainActor.run {
+                dismissPlayer()
+            }
+            return
+        }
+
         await MainActor.run {
             activePlaybackURL = nil
             viewModel = PlayerViewModel(
@@ -813,7 +805,6 @@ struct PlayerTVView: View {
 private enum PlayerSettingsSheet: String, Identifiable {
     case audio
     case subtitle
-    case speed
 
     var id: String {
         rawValue
@@ -825,8 +816,6 @@ private enum PlayerSettingsSheet: String, Identifiable {
             "player.settings.audio"
         case .subtitle:
             "player.settings.subtitles"
-        case .speed:
-            "player.settings.speed"
         }
     }
 }

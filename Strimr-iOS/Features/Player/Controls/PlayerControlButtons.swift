@@ -7,28 +7,24 @@ struct PlayerIconButton: View {
 
     var body: some View {
         Button(action: action) {
+            let chrome = RoundedRectangle(cornerRadius: 22, style: .continuous)
             Image(systemName: systemName)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 58, height: 58)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0.18),
-                            .white.opacity(0.08),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
-                    in: Circle(),
-                )
+                .background(chrome.fill(.thinMaterial))
                 .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1),
+                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.35), radius: 18, x: 0, y: 12)
+                .shadow(
+                    color: Color.brandPrimary.opacity(0.14),
+                    radius: 10,
+                    x: 0,
+                    y: 6
+                )
         }
         .accessibilityLabel(accessibilityLabel ?? systemName)
+        .buttonStyle(.plain)
     }
 }
 
@@ -38,30 +34,30 @@ struct PlayPauseButton: View {
 
     var body: some View {
         Button(action: action) {
+            let chrome = RoundedRectangle(cornerRadius: 26, style: .continuous)
             Image(systemName: isPaused ? "play.fill" : "pause.fill")
                 .font(.title.weight(.black))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .frame(width: 72, height: 72)
                 .background(
-                    LinearGradient(
-                        colors: [
-                            Color.white,
-                            Color.white.opacity(0.85),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
-                    in: Circle(),
+                    chrome.fill(Color.brandPrimary.opacity(0.18))
                 )
                 .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.35), lineWidth: 1),
+                    chrome.stroke(Color.brandPrimary.opacity(0.52), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 14)
+                .shadow(
+                    color: Color.brandPrimary.opacity(0.18),
+                    radius: 12,
+                    x: 0,
+                    y: 8
+                )
         }
-        .accessibilityLabel(isPaused
-            ? String(localized: "common.actions.play")
-            : String(localized: "common.actions.pause"))
+        .accessibilityLabel(
+            isPaused
+                ? String(localized: "common.actions.play")
+                : String(localized: "common.actions.pause")
+        )
+        .buttonStyle(.plain)
     }
 }
 
@@ -71,33 +67,29 @@ struct SkipMarkerButton: View {
 
     var body: some View {
         Button(action: action) {
+            let chrome = RoundedRectangle(cornerRadius: 18, style: .continuous)
             HStack(spacing: 10) {
                 Text(title)
                     .font(.callout.weight(.semibold))
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.bold))
             }
-            .foregroundStyle(.black)
+            .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.white,
-                        Color.white.opacity(0.9),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing,
-                ),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous),
-            )
+            .background(chrome.fill(.thinMaterial))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(0.35), lineWidth: 1),
+                chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.3), radius: 16, x: 0, y: 12)
+            .shadow(
+                color: Color.brandPrimary.opacity(0.12),
+                radius: 8,
+                x: 0,
+                y: 6
+            )
         }
         .accessibilityLabel(title)
+        .buttonStyle(.plain)
     }
 }
 
@@ -106,17 +98,24 @@ struct PlayerSettingsButton: View {
 
     var body: some View {
         Button(action: action) {
+            let chrome = RoundedRectangle(cornerRadius: 14, style: .continuous)
             Image(systemName: "gearshape")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 42, height: 42)
-                .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(chrome.fill(Color.brandPrimary.opacity(0.14)))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1),
+                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
+                )
+                .shadow(
+                    color: Color.brandPrimary.opacity(0.1),
+                    radius: 8,
+                    x: 0,
+                    y: 5
                 )
         }
         .accessibilityLabel(String(localized: "settings.title"))
+        .buttonStyle(.plain)
     }
 }
 
@@ -126,20 +125,26 @@ struct RotationLockButton: View {
 
     var body: some View {
         Button(action: action) {
+            let chrome = RoundedRectangle(cornerRadius: 14, style: .continuous)
             Image(systemName: isLocked ? "lock.fill" : "lock.open")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 42, height: 42)
                 .background(
-                    .white.opacity(isLocked ? 0.24 : 0.12),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous),
+                    chrome.fill(Color.brandPrimary.opacity(isLocked ? 0.24 : 0.14))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1),
+                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
+                )
+                .shadow(
+                    color: Color.brandPrimary.opacity(0.1),
+                    radius: 8,
+                    x: 0,
+                    y: 5
                 )
         }
         .accessibilityLabel(String(localized: isLocked ? "player.controls.rotation.unlock" :
                 "player.controls.rotation.lock"))
+        .buttonStyle(.plain)
     }
 }

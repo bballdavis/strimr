@@ -12,7 +12,6 @@ struct PlayerControlsTVView: View {
     var isScrubbing: Bool
     var onShowAudioSettings: () -> Void
     var onShowSubtitleSettings: () -> Void
-    var onShowSpeedSettings: () -> Void
     var onSeekBackward: () -> Void
     var onPlayPause: () -> Void
     var onSeekForward: () -> Void
@@ -137,14 +136,6 @@ struct PlayerControlsTVView: View {
                     )
                 }
 
-                HStack(spacing: 42) {
-                    Spacer()
-
-                    PlayerSettingButton(
-                        systemImage: "speedometer",
-                        action: onShowSpeedSettings,
-                    )
-                }
             }
         }
         .padding(.horizontal, 40)

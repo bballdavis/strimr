@@ -164,11 +164,15 @@ private struct PlayerControlsHeader: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 42, height: 42)
-                    .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(.thinMaterial)
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1),
+                            .stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1),
                     )
+                    .shadow(color: Color.brandPrimary.opacity(0.14), radius: 10, x: 0, y: 6)
             }
 
             VStack(alignment: .leading, spacing: 4) {
