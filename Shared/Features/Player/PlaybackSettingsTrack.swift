@@ -78,13 +78,48 @@ struct TrackSelectionRow: View {
     var subtitle: String?
     var isSelected: Bool
     var action: () -> Void
+    #if os(tvOS)
+        @Environment(\.isFocused) private var isFocused
+    #endif
+
+    private var backgroundColor: Color {
+#if os(tvOS)
+        if isSelected {
+            return Color.brandPrimary.opacity(isFocused ? 0.24 : 0.16)
+        }
+        return Color.white.opacity(isFocused ? 0.12 : 0.07)
+#else
+        if isSelected {
+            return Color.brandPrimary.opacity(0.16)
+        }
+        return Color.white.opacity(0.07)
+#endif
+    }
+
+    private var borderColor: Color {
+#if os(tvOS)
+        if isSelected {
+            return Color.brandPrimary.opacity(isFocused ? 1.0 : 0.7)
+        }
+        return Color.white.opacity(isFocused ? 0.26 : 0.16)
+#else
+        if isSelected {
+            return Color.brandPrimary.opacity(0.7)
+        }
+        return Color.white.opacity(0.16)
+#endif
+    }
+
+    private var foregroundColor: Color {
+        isSelected ? .white : .primary
+    }
 
     var body: some View {
         Button(action: action) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(foregroundColor)
                     if let subtitle, !subtitle.isEmpty {
                         Text(subtitle)
                             .font(.footnote)
@@ -96,11 +131,40 @@ struct TrackSelectionRow: View {
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.blue)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Color.brandPrimary)
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(backgroundColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(borderColor, lineWidth: isSelected ? 1.5 : 1)
+            )
+#if os(tvOS)
+            .shadow(
+                color: isSelected ? Color.brandPrimary.opacity(0.18) : .clear,
+                radius: 6,
+                x: 0,
+                y: 4
+            )
+#else
+            .shadow(
+                color: isSelected ? Color.brandPrimary.opacity(0.18) : .clear,
+                radius: 6,
+                x: 0,
+                y: 4
+            )
+#endif
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .listRowBackground(Color.clear)
+        .accessibilityValue(isSelected ? "selected" : "not selected")
     }
 }

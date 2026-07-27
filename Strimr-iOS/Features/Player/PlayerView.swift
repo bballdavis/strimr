@@ -35,6 +35,7 @@ struct PlayerView: View {
     @State private var wasPlayingBeforeBackground = false
     @State private var shouldResumeAfterMediaLoad = false
     @State private var shouldPauseAfterMediaLoad = false
+    private let isPlaybackAuthorized: (PlexItem) -> Bool
 
     private let controlsHideDelay: TimeInterval = 3.0
     private var seekBackwardInterval: Double {
@@ -45,8 +46,12 @@ struct PlayerView: View {
         Double(settingsManager.playback.seekForwardSeconds)
     }
 
-    init(viewModel: PlayerViewModel) {
+    init(
+        viewModel: PlayerViewModel,
+        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
+    ) {
         _viewModel = State(initialValue: viewModel)
+        self.isPlaybackAuthorized = isPlaybackAuthorized
     }
 
     var body: some View {
@@ -257,10 +262,8 @@ struct PlayerView: View {
             subtitleTracks: settingsSubtitleTracks,
             selectedAudioTrackID: selectedAudioTrackID,
             selectedSubtitleTrackID: selectedSubtitleTrackID,
-            playbackRate: playbackRate,
             onSelectAudio: selectAudioTrack(_:),
             onSelectSubtitle: selectSubtitleTrack(_:),
-            onSelectPlaybackRate: selectPlaybackRate(_:),
             onClose: { showingSettings = false },
         )
         .presentationDetents([.medium])
@@ -388,12 +391,6 @@ struct PlayerView: View {
         Task {
             await viewModel.persistStreamSelection(for: track)
         }
-    }
-
-    private func selectPlaybackRate(_ rate: Float) {
-        playbackRate = rate
-        playerController.setPlaybackRate(rate)
-        showControls(temporarily: true)
     }
 
     private func jump(by seconds: Double) {
@@ -663,6 +660,13 @@ struct PlayerView: View {
     }
 
     private func startPlayback(of episode: PlexItem) async {
+        guard isPlaybackAuthorized(episode) else {
+            await MainActor.run {
+                dismissPlayer(force: true)
+            }
+            return
+        }
+
         await MainActor.run {
             activePlaybackURL = nil
             viewModel = PlayerViewModel(

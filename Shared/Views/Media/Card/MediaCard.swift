@@ -22,6 +22,12 @@ struct MediaCard: View {
             artwork
             #if os(tvOS)
             .scaleEffect(isFocused ? 1.12 : 1)
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isFocused ? Color.accentColor : .clear, lineWidth: isFocused ? 3.5 : 0)
+            }
+            .shadow(color: isFocused ? Color.accentColor.opacity(0.64) : .clear, radius: isFocused ? 10 : 0)
+            .shadow(color: isFocused ? Color.accentColor.opacity(0.28) : .clear, radius: isFocused ? 22 : 0)
             .animation(.easeOut(duration: 0.15), value: isFocused)
             #endif
 
