@@ -2,29 +2,16 @@ import Foundation
 
 enum DownloadQuality: String, Codable, CaseIterable, Equatable, Identifiable {
     case original
-    case megabits20_1080p
-    case megabits12_1080p
-    case megabits10_720p
-    case megabits4_720p
-    case megabits3_720p
-    case megabits2_720p
-    case kilobits1500_480p
-    case kilobits720_328p
 
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .original: "Original"
-        case .megabits20_1080p: "20 Mbps 1080p"
-        case .megabits12_1080p: "12 Mbps 1080p"
-        case .megabits10_720p: "10 Mbps 720p"
-        case .megabits4_720p: "4 Mbps 720p"
-        case .megabits3_720p: "3 Mbps 720p"
-        case .megabits2_720p: "2 Mbps 720p"
-        case .kilobits1500_480p: "1.5 Mbps 480p"
-        case .kilobits720_328p: "0.7 Mbps 328p"
-        }
+        "Original"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self = Self(rawValue: (try? container.decode(String.self)) ?? "") ?? .original
     }
 }
 
