@@ -100,39 +100,44 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     func localMediaItem(for item: DownloadItem) -> MediaItem {
-        MediaItem(
-            id: item.metadata.ratingKey,
-            guid: item.metadata.guid,
-            summary: item.metadata.summary,
-            title: item.metadata.title,
-            type: item.metadata.type,
-            parentRatingKey: item.metadata.parentRatingKey,
-            grandparentRatingKey: item.metadata.grandparentRatingKey,
-            genres: item.metadata.genres,
-            year: item.metadata.year,
-            duration: item.metadata.duration,
-            videoResolution: nil,
-            rating: nil,
-            ratings: [],
-            contentRating: item.metadata.contentRating,
-            studio: item.metadata.studio,
-            tagline: item.metadata.tagline,
-            thumbPath: nil,
-            artPath: nil,
-            ultraBlurColors: nil,
-            viewOffset: nil,
-            viewCount: nil,
-            childCount: nil,
-            leafCount: nil,
-            viewedLeafCount: nil,
-            grandparentTitle: item.metadata.grandparentTitle,
-            parentTitle: item.metadata.parentTitle,
-            parentIndex: item.metadata.parentIndex,
-            index: item.metadata.index,
-            grandparentThumbPath: nil,
-            grandparentArtPath: nil,
-            parentThumbPath: nil,
-        )
+        item.metadata.localMediaItem
+    }
+
+    func updatePlaybackState(
+        forDownloadID downloadID: String,
+        position: TimeInterval,
+        duration: TimeInterval?,
+        didFinish: Bool,
+    ) {
+        guard let index = items.firstIndex(where: { $0.id == downloadID }) else { return }
+        guard items[index].status == .completed else { return }
+
+        let clampedPosition = max(0, position)
+        items[index].metadata.lastPlayedAt = Date()
+
+        if didFinish {
+            items[index].metadata.viewOffset = nil
+            items[index].metadata.viewCount = max(items[index].metadata.viewCount ?? 0, 1)
+        } else {
+            let normalizedDuration = duration ?? items[index].metadata.duration
+            let nearBeginning = clampedPosition < 15
+            let nearEnd: Bool
+            if let normalizedDuration, normalizedDuration > 0 {
+                nearEnd = clampedPosition >= max(normalizedDuration * 0.95, normalizedDuration - 60)
+            } else {
+                nearEnd = false
+            }
+
+            if nearBeginning || nearEnd {
+                items[index].metadata.viewOffset = nil
+            } else {
+                items[index].metadata.viewOffset = clampedPosition
+            }
+            items[index].metadata.viewCount = nil
+        }
+
+        persistMetadataFile(for: items[index])
+        persistState()
     }
 
     func enqueueItem(ratingKey: String, context: PlexAPIContext) async {

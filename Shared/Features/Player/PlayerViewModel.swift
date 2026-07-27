@@ -61,11 +61,16 @@ final class PlayerViewModel {
         shouldReportPlaybackToServer = true
     }
 
-    init(localMedia: MediaItem, localPlaybackURL: URL, context: PlexAPIContext) {
+    init(
+        localMedia: MediaItem,
+        localPlaybackURL: URL,
+        context: PlexAPIContext,
+        shouldResumeFromOffset: Bool = true,
+    ) {
         playQueueState = PlayQueueState(localRatingKey: localMedia.id)
         ratingKey = localMedia.id
         self.context = context
-        shouldResumeFromOffsetFlag = false
+        shouldResumeFromOffsetFlag = shouldResumeFromOffset
         self.localMedia = localMedia
         self.localPlaybackURL = localPlaybackURL
         shouldReportPlaybackToServer = false

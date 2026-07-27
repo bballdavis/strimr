@@ -38,6 +38,12 @@ struct DownloadedMediaMetadata: Codable, Hashable {
     var videoFileName: String
     var fileSize: Int64?
     var createdAt: Date
+    // Optional defaults keep indexes written before offline resume support
+    // decodable while allowing local playback state to be persisted separately
+    // from Plex's server timeline.
+    var viewOffset: TimeInterval? = nil
+    var viewCount: Int? = nil
+    var lastPlayedAt: Date? = nil
 
     var subtitle: String? {
         switch type {
@@ -55,6 +61,42 @@ struct DownloadedMediaMetadata: Codable, Hashable {
         case .collection, .playlist, .clip, .unknown:
             return nil
         }
+    }
+
+    var localMediaItem: MediaItem {
+        MediaItem(
+            id: ratingKey,
+            guid: guid,
+            summary: summary,
+            title: title,
+            type: type,
+            parentRatingKey: parentRatingKey,
+            grandparentRatingKey: grandparentRatingKey,
+            genres: genres,
+            year: year,
+            duration: duration,
+            videoResolution: nil,
+            rating: nil,
+            ratings: [],
+            contentRating: contentRating,
+            studio: studio,
+            tagline: tagline,
+            thumbPath: nil,
+            artPath: nil,
+            ultraBlurColors: nil,
+            viewOffset: viewOffset,
+            viewCount: viewCount,
+            childCount: nil,
+            leafCount: nil,
+            viewedLeafCount: nil,
+            grandparentTitle: grandparentTitle,
+            parentTitle: parentTitle,
+            parentIndex: parentIndex,
+            index: index,
+            grandparentThumbPath: nil,
+            grandparentArtPath: nil,
+            parentThumbPath: nil,
+        )
     }
 }
 
