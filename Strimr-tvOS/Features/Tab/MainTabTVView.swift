@@ -49,7 +49,11 @@ struct MainTabTVView: View {
             Tab("tabs.search", systemImage: "magnifyingglass", value: MainCoordinator.Tab.search, role: .search) {
                 NavigationStack(path: coordinator.pathBinding(for: .search)) {
                     SearchTVView(
-                        viewModel: SearchViewModel(context: plexApiContext),
+                        viewModel: SearchViewModel(
+                            context: plexApiContext,
+                            settingsManager: settingsManager,
+                            libraryStore: libraryStore,
+                        ),
                         onSelectMedia: coordinator.showMediaDetail,
                     )
                     .navigationDestination(for: MainCoordinator.Route.self) { route in

@@ -9,11 +9,13 @@ final class HubDetailViewModel {
     var isLoading = false
     var isLoadingMore = false
     var errorMessage: String?
+    @ObservationIgnored var itemFilter: ((MediaDisplayItem) -> Bool)?
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private var hasLoaded = false
     @ObservationIgnored private var reachedEnd = false
     @ObservationIgnored private var totalItemCount: Int?
+    @ObservationIgnored private var rawLoadedCount = 0
     @ObservationIgnored private let pageSize = 50
 
     init(hub: Hub, context: PlexAPIContext) {
@@ -31,6 +33,7 @@ final class HubDetailViewModel {
         items = []
         reachedEnd = false
         totalItemCount = nil
+        rawLoadedCount = 0
         await loadPage(start: 0, isInitialLoad: true)
     }
 
@@ -41,7 +44,7 @@ final class HubDetailViewModel {
 
     func loadMore() async {
         guard !items.isEmpty else { return }
-        await loadPage(start: items.count, isInitialLoad: false)
+        await loadPage(start: rawLoadedCount, isInitialLoad: false)
     }
 
     private func loadPage(start: Int, isInitialLoad: Bool) async {
@@ -73,18 +76,29 @@ final class HubDetailViewModel {
         }
 
         do {
-            let response = try await repository.getHubItems(
-                path: endpoint.path,
-                queryItems: endpoint.queryItems.filter { $0.name != "count" },
-                pagination: PlexPagination(start: start, size: pageSize),
-            )
-            let newItems = (response.mediaContainer.metadata ?? [])
-                .filter(\.type.isSupported)
-                .compactMap(MediaDisplayItem.init)
+            var newItems: [MediaDisplayItem] = []
+            var nextStart = start
 
-            totalItemCount = response.mediaContainer.totalSize
-                ?? response.mediaContainer.size
-                ?? totalItemCount
+            repeat {
+                let response = try await repository.getHubItems(
+                    path: endpoint.path,
+                    queryItems: endpoint.queryItems.filter { $0.name != "count" },
+                    pagination: PlexPagination(start: nextStart, size: pageSize),
+                )
+                let rawMetadata = response.mediaContainer.metadata ?? []
+                let mappedItems = rawMetadata
+                    .filter(\.type.isSupported)
+                    .compactMap(MediaDisplayItem.init)
+                newItems = itemFilter.map { mappedItems.filter($0) } ?? mappedItems
+
+                rawLoadedCount = nextStart + rawMetadata.count
+                totalItemCount = response.mediaContainer.totalSize
+                    ?? response.mediaContainer.size
+                    ?? totalItemCount
+                reachedEnd = rawMetadata.isEmpty
+                    || totalItemCount.map { rawLoadedCount >= $0 } == true
+                nextStart = rawLoadedCount
+            } while itemFilter != nil && newItems.isEmpty && !reachedEnd
 
             if isInitialLoad {
                 items = newItems
@@ -92,11 +106,6 @@ final class HubDetailViewModel {
                 items.append(contentsOf: newItems)
             }
 
-            if newItems.isEmpty {
-                reachedEnd = true
-            } else if let totalItemCount {
-                reachedEnd = items.count >= totalItemCount
-            }
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
             ErrorReporter.capture(error)

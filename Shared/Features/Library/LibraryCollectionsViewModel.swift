@@ -9,7 +9,9 @@ final class LibraryCollectionsViewModel {
     var isLoading = false
     var isLoadingMore = false
     var errorMessage: String?
+    @ObservationIgnored var itemFilter: ((MediaDisplayItem) -> Bool)?
     private var reachedEnd = false
+    private var rawLoadedCount = 0
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private var refreshGate = AutomaticRefreshGate()
@@ -68,24 +70,30 @@ final class LibraryCollectionsViewModel {
         }
 
         do {
-            let start = reset ? 0 : items.count
-            let response = try await sectionRepository.getSectionCollections(
-                sectionId: sectionId,
-                includeCollections: true,
-                pagination: PlexPagination(start: start, size: 20),
-            )
+            var nextStart = reset ? 0 : rawLoadedCount
+            var newItems: [MediaDisplayItem] = []
 
-            let newItems = (response.mediaContainer.metadata ?? [])
-                .compactMap(MediaDisplayItem.init)
-            let total = response.mediaContainer.totalSize ?? (start + newItems.count)
+            repeat {
+                let response = try await sectionRepository.getSectionCollections(
+                    sectionId: sectionId,
+                    includeCollections: true,
+                    pagination: PlexPagination(start: nextStart, size: 20),
+                )
+
+                let rawMetadata = response.mediaContainer.metadata ?? []
+                let mappedItems = rawMetadata.compactMap(MediaDisplayItem.init)
+                newItems = itemFilter.map { mappedItems.filter($0) } ?? mappedItems
+                let total = response.mediaContainer.totalSize ?? (nextStart + rawMetadata.count)
+                rawLoadedCount = nextStart + rawMetadata.count
+                reachedEnd = rawLoadedCount >= total || rawMetadata.isEmpty
+                nextStart = rawLoadedCount
+            } while itemFilter != nil && newItems.isEmpty && !reachedEnd
 
             if reset {
                 items = newItems
             } else {
                 items.append(contentsOf: newItems)
             }
-
-            reachedEnd = items.count >= total || newItems.isEmpty
         } catch {
             handleLoadError(
                 error.localizedDescription,
@@ -101,6 +109,7 @@ final class LibraryCollectionsViewModel {
         isLoading = false
         isLoadingMore = false
         reachedEnd = false
+        rawLoadedCount = 0
     }
 
     private func handleLoadError(_ message: String, reset: Bool, preservingExistingContent: Bool) {

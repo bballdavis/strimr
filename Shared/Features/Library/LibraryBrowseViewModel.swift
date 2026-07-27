@@ -16,10 +16,12 @@ final class LibraryBrowseViewModel {
     var isLoadingMore = false
     var errorMessage: String?
     var controls: LibraryBrowseControlsViewModel
+    @ObservationIgnored var itemFilter: ((MediaDisplayItem) -> Bool)?
     private var folderStack: [FolderBreadcrumb] = []
 
     private var reachedEnd = false
     private var hasLoadedMeta = false
+    private var rawLoadedCount = 0
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
@@ -73,6 +75,7 @@ final class LibraryBrowseViewModel {
 
     func refresh() async {
         reachedEnd = false
+        rawLoadedCount = 0
         browseItems = []
         await fetch(reset: true)
     }
@@ -99,38 +102,42 @@ final class LibraryBrowseViewModel {
         }
 
         do {
-            let start = reset ? 0 : browseItems.count
+            var nextStart = reset ? 0 : rawLoadedCount
             let endpoint = resolvedEndpoint(sectionId: sectionId)
-            let includeCollections = settingsManager.interface.displayCollections ? true : nil
-            let includeMeta = !hasLoadedMeta
-            let queryItems = controls.buildQueryItems(
-                baseItems: endpoint.queryItems,
-                includeCollections: includeCollections,
-                includeMeta: includeMeta,
-            )
+            let includeCollections = includeCollectionsForBrowse
+            var newItems: [LibraryBrowseItem] = []
 
-            let response = try await sectionRepository.getSectionBrowseItems(
-                path: endpoint.path,
-                queryItems: queryItems,
-                pagination: PlexPagination(start: start, size: 20),
-            )
+            repeat {
+                let includeMeta = !hasLoadedMeta
+                let queryItems = controls.buildQueryItems(
+                    baseItems: endpoint.queryItems,
+                    includeCollections: includeCollections,
+                    includeMeta: includeMeta,
+                )
+                let response = try await sectionRepository.getSectionBrowseItems(
+                    path: endpoint.path,
+                    queryItems: queryItems,
+                    pagination: PlexPagination(start: nextStart, size: 20),
+                )
 
-            if includeMeta, let meta = response.mediaContainer.meta {
-                controls.applyMeta(meta)
-                hasLoadedMeta = true
-            }
+                if includeMeta, let meta = response.mediaContainer.meta {
+                    controls.applyMeta(meta)
+                    hasLoadedMeta = true
+                }
 
-            let newItems = (response.mediaContainer.metadata ?? [])
-                .compactMap(mapBrowseItem)
-            let total = response.mediaContainer.totalSize ?? (start + newItems.count)
+                let rawMetadata = response.mediaContainer.metadata ?? []
+                newItems = filteredBrowseItems(rawMetadata.compactMap(mapBrowseItem))
+                let total = response.mediaContainer.totalSize ?? (nextStart + rawMetadata.count)
+                rawLoadedCount = nextStart + rawMetadata.count
+                reachedEnd = rawLoadedCount >= total || rawMetadata.isEmpty
+                nextStart = rawLoadedCount
+            } while itemFilter != nil && newItems.isEmpty && !reachedEnd
 
             if reset {
                 browseItems = newItems
             } else {
                 browseItems.append(contentsOf: newItems)
             }
-
-            reachedEnd = browseItems.count >= total || newItems.isEmpty
         } catch {
             if reset {
                 resetState(error: error.localizedDescription)
@@ -162,12 +169,36 @@ final class LibraryBrowseViewModel {
 
     private var defaultTypeQueryValue: String? {
         switch library.type {
-        case .movie:
+        case .movie where !library.isNoneAgentLibrary:
             "1"
         case .show:
             "2"
         default:
-            "1,2"
+            nil
+        }
+    }
+
+    private var includeCollectionsForBrowse: Bool? {
+        if library.isNoneAgentLibrary {
+            return settingsManager.interface.displayCollections ? true : nil
+        }
+        switch library.type {
+        case .movie, .show:
+            return false
+        default:
+            return settingsManager.interface.displayCollections ? true : nil
+        }
+    }
+
+    private func filteredBrowseItems(_ items: [LibraryBrowseItem]) -> [LibraryBrowseItem] {
+        guard let itemFilter else { return items }
+        return items.filter { item in
+            switch item {
+            case .folder:
+                true
+            case let .media(media):
+                itemFilter(media)
+            }
         }
     }
 
@@ -193,5 +224,6 @@ final class LibraryBrowseViewModel {
         isLoading = false
         isLoadingMore = false
         reachedEnd = false
+        rawLoadedCount = 0
     }
 }

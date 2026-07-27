@@ -361,7 +361,7 @@ struct MacMediaDetailView: View {
             isShowingShowDownloadSheet = true
         case .season:
             Task { await downloadManager.enqueueSeason(ratingKey: viewModel.media.id, context: context) }
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             Task { await downloadManager.enqueueItem(ratingKey: viewModel.media.id, context: context) }
         }
     }

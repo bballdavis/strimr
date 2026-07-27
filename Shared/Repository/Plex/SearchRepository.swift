@@ -8,13 +8,13 @@ final class SearchRepository {
 
     struct SearchParams: QueryItemConvertible {
         var query: String
-        var searchTypes: [SearchType]
+        var searchTypes: [SearchType]?
         var limit: Int?
 
         var queryItems: [URLQueryItem] {
             [
                 URLQueryItem(name: "query", value: query),
-                URLQueryItem.makeArray("searchTypes", searchTypes.map(\.rawValue)),
+                searchTypes.flatMap { URLQueryItem.makeArray("searchTypes", $0.map(\.rawValue)) },
                 URLQueryItem.make("limit", limit),
             ].compactMap(\.self)
         }

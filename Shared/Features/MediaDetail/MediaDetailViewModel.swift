@@ -24,6 +24,7 @@ final class MediaDetailViewModel {
     var onDeckItem: MediaItem?
     private var fallbackPlaybackTarget: MediaDetailPlaybackTarget?
     var heroImageURL: URL?
+    var titleLogoURL: URL?
     var isLoading = false
     var errorMessage: String?
     var backdropGradient: [Color] = []
@@ -38,6 +39,8 @@ final class MediaDetailViewModel {
     var seasonsErrorMessage: String?
     var episodesErrorMessage: String?
     var relatedHubsErrorMessage: String?
+    @ObservationIgnored var itemFilter: ((MediaItem) -> Bool)?
+    @ObservationIgnored var hubFilter: ((Hub) -> Hub?)?
     private var updatingWatchStatusIds: Set<String> = []
     var watchActionErrorMessage: String?
     var isLoadingWatchlistStatus = false
@@ -83,6 +86,7 @@ final class MediaDetailViewModel {
             onDeckItem = nil
             fallbackPlaybackTarget = nil
             watchActionErrorMessage = nil
+            titleLogoURL = nil
         }
 
         do {
@@ -96,10 +100,15 @@ final class MediaDetailViewModel {
             {
                 media = playable
                 cast = castMembers(from: item)
+                resolveTitleLogo(from: item)
                 resolveArtwork()
                 resolveGradient()
+            } else {
+                titleLogoURL = nil
             }
-            onDeckItem = response.mediaContainer.metadata?.first?.onDeck?.metadata.map { MediaItem(plexItem: $0) }
+            onDeckItem = response.mediaContainer.metadata?.first?.onDeck?.metadata
+                .map(MediaItem.init)
+                .flatMap { itemFilter?($0) == false ? nil : $0 }
             await loadParentSeries(using: metadataRepository)
             await loadWatchlistStatus()
         } catch {
@@ -142,7 +151,7 @@ final class MediaDetailViewModel {
             seasons = []
             selectedSeasonId = media.id
             await fetchEpisodes(for: media.id, preservingExistingContent: preservingExistingContent)
-        case .movie, .episode, .season:
+        case .movie, .episode, .season, .clip:
             seasons = []
             episodes = []
             selectedSeasonId = nil
@@ -160,7 +169,7 @@ final class MediaDetailViewModel {
             media.mediaItem.parentRatingKey
         case .episode:
             await resolveEpisodeSeriesRatingKey(using: metadataRepository)
-        case .movie, .show:
+        case .movie, .show, .clip:
             nil
         }
 
@@ -171,7 +180,9 @@ final class MediaDetailViewModel {
 
         do {
             let response = try await metadataRepository.getMetadata(ratingKey: seriesRatingKey)
-            parentSeries = response.mediaContainer.metadata?.first.flatMap(PlayableMediaItem.init)
+            parentSeries = response.mediaContainer.metadata?.first
+                .flatMap(PlayableMediaItem.init)
+                .flatMap { itemFilter?($0.mediaItem) == false ? nil : $0 }
             resolveArtwork()
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
@@ -288,6 +299,28 @@ final class MediaDetailViewModel {
         resolveGradient()
     }
 
+    private func resolveTitleLogo(from item: PlexItem) {
+        guard
+            let image = Self.preferredTitleLogo(in: item.images ?? []),
+            let imageRepository = try? ImageRepository(context: context)
+        else {
+            titleLogoURL = nil
+            return
+        }
+
+        titleLogoURL = imageRepository.transcodeImageURL(
+            path: image.url.path,
+            width: 560,
+            height: 200
+        )
+    }
+
+    static func preferredTitleLogo(in images: [PlexImage]) -> PlexImage? {
+        images.first { image in
+            image.type.localizedCaseInsensitiveContains("logo")
+        }
+    }
+
     private func resolveGradient() {
         backdropGradient = MediaBackdropGradient.colors(for: .playable(media.mediaItem))
     }
@@ -356,7 +389,7 @@ final class MediaDetailViewModel {
             return media.mediaItem.parentTitle
         case .episode:
             return media.mediaItem.grandparentTitle ?? media.mediaItem.parentTitle
-        case .movie, .show:
+        case .movie, .show, .clip:
             return media.secondaryLabel
         }
     }
@@ -391,7 +424,7 @@ final class MediaDetailViewModel {
         let timeLeft = target.shouldResumeFromOffset ? timeLeftText(for: target.item) : nil
 
         switch media.type {
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             return timeLeft
         case .show, .season:
             let episodeLabel = seasonEpisodeLabel(for: target.item)
@@ -444,7 +477,7 @@ final class MediaDetailViewModel {
 
     private var primaryPlaybackTarget: MediaDetailPlaybackTarget? {
         switch media.type {
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             return MediaDetailPlaybackTarget(
                 item: media.mediaItem,
                 type: media.plexType,
@@ -493,7 +526,7 @@ final class MediaDetailViewModel {
         guard let playableType = PlayableItemType(plexType: item.type) else { return false }
 
         switch playableType {
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             return (item.viewCount ?? 0) > 0
         case .show, .season:
             guard let leafCount = item.leafCount, let viewedLeafCount = item.viewedLeafCount else {
@@ -565,16 +598,16 @@ final class MediaDetailViewModel {
         do {
             let response = try await metadataRepository.getMetadataChildren(ratingKey: detailRatingKey)
             let fetchedSeasons = (response.mediaContainer.metadata ?? []).map(MediaItem.init)
-            seasons = fetchedSeasons
+            seasons = filteredMediaItems(fetchedSeasons)
             episodes = []
 
-            guard !fetchedSeasons.isEmpty else {
+            guard !seasons.isEmpty else {
                 selectedSeasonId = nil
                 episodes = []
                 return
             }
 
-            let nextSeasonId = preferredSeasonId(in: fetchedSeasons)
+            let nextSeasonId = preferredSeasonId(in: seasons)
             selectedSeasonId = nextSeasonId
 
             if let seasonId = nextSeasonId {
@@ -630,7 +663,7 @@ final class MediaDetailViewModel {
             let fetchedEpisodes = (response.mediaContainer.metadata ?? []).map(MediaItem.init)
 
             guard selectedSeasonId == seasonId else { return }
-            episodes = fetchedEpisodes
+            episodes = filteredMediaItems(fetchedEpisodes)
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
             ErrorReporter.capture(error)
@@ -655,7 +688,7 @@ final class MediaDetailViewModel {
         }
 
         switch media.type {
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             fallbackPlaybackTarget = nil
         case .season:
             fallbackPlaybackTarget = playbackFallback(from: episodes, sortBySeason: false)
@@ -665,6 +698,7 @@ final class MediaDetailViewModel {
                 let allEpisodes = (response.mediaContainer.metadata ?? [])
                     .map(MediaItem.init)
                     .filter { $0.type == .episode }
+                    .filter { itemFilter?($0) != false }
                 let regularEpisodes = allEpisodes.filter { ($0.parentIndex ?? 0) > 0 }
                 let eligibleEpisodes = regularEpisodes.isEmpty ? allEpisodes : regularEpisodes
                 fallbackPlaybackTarget = playbackFallback(from: eligibleEpisodes, sortBySeason: true)
@@ -739,7 +773,10 @@ final class MediaDetailViewModel {
 
         do {
             let response = try await hubRepository.getRelatedMediaHubs(ratingKey: detailRatingKey)
-            relatedHubs = (response.mediaContainer.hub ?? []).map(Hub.init)
+            let mappedHubs = (response.mediaContainer.hub ?? []).map(Hub.init)
+            relatedHubs = hubFilter.map { filter in
+                mappedHubs.compactMap(filter)
+            } ?? mappedHubs
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
             ErrorReporter.capture(error)
@@ -750,6 +787,11 @@ final class MediaDetailViewModel {
                 relatedHubsErrorMessage = error.localizedDescription
             }
         }
+    }
+
+    private func filteredMediaItems(_ items: [MediaItem]) -> [MediaItem] {
+        guard let itemFilter else { return items }
+        return items.filter(itemFilter)
     }
 
     private func handleDetailLoadError(preservingExistingContent: Bool) {

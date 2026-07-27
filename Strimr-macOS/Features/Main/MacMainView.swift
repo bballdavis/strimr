@@ -132,7 +132,11 @@ struct MacMainView: View {
             )
         case .search:
             SearchView(
-                viewModel: SearchViewModel(context: context),
+                viewModel: SearchViewModel(
+                    context: context,
+                    settingsManager: settingsManager,
+                    libraryStore: libraryStore
+                ),
                 onSelectMedia: appModel.showMedia,
             )
         case .downloads:

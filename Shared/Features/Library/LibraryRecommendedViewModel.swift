@@ -8,6 +8,7 @@ final class LibraryRecommendedViewModel {
     var hubs: [Hub] = []
     var isLoading = false
     var errorMessage: String?
+    @ObservationIgnored var hubFilter: ((Hub) -> Hub?)?
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private var refreshGate = AutomaticRefreshGate()
@@ -58,7 +59,10 @@ final class LibraryRecommendedViewModel {
         do {
             let response = try await hubRepository.getSectionHubs(sectionId: sectionId)
             let plexHubs = response.mediaContainer.hub ?? []
-            hubs = plexHubs.map(Hub.init)
+            let mappedHubs = plexHubs.map(Hub.init)
+            hubs = hubFilter.map { filter in
+                mappedHubs.compactMap(filter)
+            } ?? mappedHubs
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
             ErrorReporter.capture(error)

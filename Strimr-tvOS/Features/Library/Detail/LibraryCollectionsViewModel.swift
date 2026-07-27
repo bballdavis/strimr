@@ -17,8 +17,12 @@ final class LibraryCollectionsViewModel {
     var sectionCharacters: [SectionCharacter] = []
     var isLoading = false
     var errorMessage: String?
+    @ObservationIgnored var itemFilter: ((MediaDisplayItem) -> Bool)?
     private var loadedPageStarts: Set<Int> = []
     private var loadingPageStarts: Set<Int> = []
+    private var rawLoadedCount = 0
+    private var reachedEnd = false
+    private var isLoadingFilteredPage = false
 
     @ObservationIgnored private let context: PlexAPIContext
     @ObservationIgnored private let settingsManager: SettingsManager
@@ -44,8 +48,12 @@ final class LibraryCollectionsViewModel {
         resetState()
         isLoading = true
         defer { isLoading = false }
-        await fetchCharactersIfNeeded(preservingExistingContent: false)
-        await loadPage(start: 0, reset: true, preservingExistingContent: false)
+        if itemFilter != nil {
+            await loadFilteredNextPage()
+        } else {
+            await fetchCharactersIfNeeded(preservingExistingContent: false)
+            await loadPage(start: 0, reset: true, preservingExistingContent: false)
+        }
     }
 
     func refreshIfNeeded(now: Date = Date()) async {
@@ -53,12 +61,24 @@ final class LibraryCollectionsViewModel {
 
         isLoading = true
         defer { isLoading = false }
+        if itemFilter != nil {
+            resetState()
+            await loadFilteredNextPage()
+            return
+        }
         await fetchCharactersIfNeeded(preservingExistingContent: true, forceReload: true)
         await loadPage(start: 0, reset: true, preservingExistingContent: true)
     }
 
     func loadPagesAround(index: Int) async {
         guard index >= 0 else { return }
+        if itemFilter != nil {
+            if index >= max(totalItemCount - 8, 0) {
+                await loadFilteredNextPage()
+            }
+            return
+        }
+
         let pageStart = max(0, (index / pageSize) * pageSize)
         if itemsByIndex[index] == nil,
            loadedPageStarts.contains(pageStart),
@@ -82,6 +102,7 @@ final class LibraryCollectionsViewModel {
         preservingExistingContent: Bool,
         forceReload: Bool = false,
     ) async {
+        guard itemFilter == nil else { return }
         guard forceReload || sectionCharacters.isEmpty else { return }
         guard let sectionId = library.sectionId else { return }
         guard let sectionRepository = try? SectionRepository(context: context) else { return }
@@ -193,6 +214,53 @@ final class LibraryCollectionsViewModel {
         isLoading = false
         loadedPageStarts = []
         loadingPageStarts = []
+        rawLoadedCount = 0
+        reachedEnd = false
+        isLoadingFilteredPage = false
+    }
+
+    private func loadFilteredNextPage() async {
+        guard !reachedEnd, !isLoadingFilteredPage else { return }
+        guard let sectionId = library.sectionId else {
+            resetState(error: String(localized: "errors.missingLibraryIdentifier"))
+            return
+        }
+        guard let sectionRepository = try? SectionRepository(context: context) else {
+            resetState(error: String(localized: "errors.selectServer.browseLibrary"))
+            return
+        }
+
+        errorMessage = nil
+        isLoadingFilteredPage = true
+        defer { isLoadingFilteredPage = false }
+
+        do {
+            while !reachedEnd {
+                let response = try await sectionRepository.getSectionCollections(
+                    sectionId: sectionId,
+                    includeCollections: true,
+                    pagination: PlexPagination(start: rawLoadedCount, size: pageSize),
+                )
+                let rawMetadata = response.mediaContainer.metadata ?? []
+                let mappedItems = rawMetadata.compactMap(MediaDisplayItem.init)
+                let filteredItems = itemFilter.map { mappedItems.filter($0) } ?? mappedItems
+                let total = response.mediaContainer.totalSize ?? (rawLoadedCount + rawMetadata.count)
+                rawLoadedCount += rawMetadata.count
+                reachedEnd = rawLoadedCount >= total || rawMetadata.isEmpty
+
+                let displayStart = itemsByIndex.count
+                for (offset, item) in filteredItems.enumerated() {
+                    itemsByIndex[displayStart + offset] = item
+                }
+                totalItemCount = itemsByIndex.count
+
+                if !filteredItems.isEmpty || reachedEnd {
+                    break
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func handleLoadError(_ message: String, reset: Bool, preservingExistingContent: Bool) {
