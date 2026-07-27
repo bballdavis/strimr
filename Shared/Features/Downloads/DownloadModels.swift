@@ -16,10 +16,35 @@ enum DownloadStatus: String, Codable, Hashable {
     }
 }
 
+enum DownloadArtworkLayoutStyle: String, Codable, Hashable {
+    case portrait
+    case landscape
+
+    var isPortrait: Bool {
+        self == .portrait
+    }
+}
+
+extension PlexItemType {
+    var defaultDownloadArtworkLayoutStyle: DownloadArtworkLayoutStyle {
+        switch self {
+        case .movie, .show, .season, .episode:
+            .portrait
+        case .collection, .playlist, .clip, .unknown:
+            .landscape
+        }
+    }
+}
+
 struct DownloadedMediaMetadata: Codable, Hashable {
     var ratingKey: String
     var guid: String
     var type: PlexItemType
+    var sourceLibrarySectionID: Int? = nil
+    /// Preserves the source-library classification for offline artwork when
+    /// the live library cache is unavailable.
+    var sourceLibraryAgent: String? = nil
+    var artworkLayoutStyle: DownloadArtworkLayoutStyle? = nil
     var title: String
     var summary: String?
     var genres: [String]
@@ -44,6 +69,14 @@ struct DownloadedMediaMetadata: Codable, Hashable {
     var viewOffset: TimeInterval? = nil
     var viewCount: Int? = nil
     var lastPlayedAt: Date? = nil
+
+    var resolvedArtworkLayoutStyle: DownloadArtworkLayoutStyle {
+        artworkLayoutStyle ?? type.defaultDownloadArtworkLayoutStyle
+    }
+
+    var prefersPortraitArtwork: Bool {
+        resolvedArtworkLayoutStyle.isPortrait
+    }
 
     var subtitle: String? {
         switch type {
