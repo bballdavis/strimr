@@ -52,6 +52,11 @@ final class SettingsManager {
         persist()
     }
 
+    func setMaxVolumePercent(_ percent: Int) {
+        settings.playback.maxVolumePercent = PlaybackSettings.clampVolumePercent(percent)
+        persist()
+    }
+
     func setSubtitleFontSize(_ fontSize: Int) {
         settings.playback.subtitleFontSize = fontSize
         persist()

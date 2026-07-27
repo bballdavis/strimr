@@ -67,6 +67,7 @@ struct PlayerView: View {
                 .onAppear {
                     playerController.onMediaLoaded = handleMediaLoaded
                     playerController.onPlaybackEnded = handlePlaybackEnded
+                    applyMaximumVolume()
                     showControls(temporarily: true)
                     playerController.setPlaybackRate(playbackRate)
                     if sharePlayCoordinator.isInSession {
@@ -134,6 +135,9 @@ struct PlayerView: View {
                 }
                 .onChange(of: scenePhase) { _, newValue in
                     handleScenePhaseChange(newValue)
+                }
+                .onChange(of: settingsManager.playback.maxVolumePercent) { _, _ in
+                    applyMaximumVolume()
                 },
         )
 
@@ -499,6 +503,12 @@ struct PlayerView: View {
         }
     }
 
+    private func applyMaximumVolume() {
+        playerController.setMaximumVolume(
+            Float(settingsManager.playback.maxVolumePercent) / 100,
+        )
+    }
+
     private func preparePlaybackForBackground() {
         guard activePlaybackURL != nil, !needsPlaybackReloadAfterBackground else { return }
 
@@ -599,7 +609,7 @@ struct PlayerView: View {
         }
 
         switch media.type {
-        case .movie:
+        case .movie, .clip:
             Task {
                 await handleMovieCompletion()
             }

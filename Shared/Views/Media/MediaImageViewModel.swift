@@ -25,7 +25,9 @@ final class MediaImageViewModel {
         case .thumb:
             media.preferredThumbPath
         case .art:
-            media.preferredArtPath
+            media.type == .clip
+                ? (media.preferredThumbPath ?? media.preferredArtPath)
+                : (media.preferredArtPath ?? media.preferredThumbPath)
         }
 
         guard let path else {

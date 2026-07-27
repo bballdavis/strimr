@@ -63,10 +63,18 @@ final class SearchViewModel {
     var activeFilters: Set<SearchFilter> = []
 
     @ObservationIgnored private let context: PlexAPIContext
+    @ObservationIgnored private let settingsManager: SettingsManager
+    @ObservationIgnored private let libraryStore: LibraryStore
     @ObservationIgnored private var searchTask: Task<Void, Never>?
 
-    init(context: PlexAPIContext) {
+    init(
+        context: PlexAPIContext,
+        settingsManager: SettingsManager,
+        libraryStore: LibraryStore,
+    ) {
         self.context = context
+        self.settingsManager = settingsManager
+        self.libraryStore = libraryStore
     }
 
     deinit {
@@ -137,6 +145,7 @@ final class SearchViewModel {
         defer { isLoading = false }
 
         do {
+            try? await libraryStore.loadLibraries()
             let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
             let params = SearchRepository.SearchParams(
                 query: trimmedQuery,
@@ -146,8 +155,18 @@ final class SearchViewModel {
             let response = try await repository.search(params: params)
             guard !Task.isCancelled else { return }
             let results = response.mediaContainer.searchResult ?? []
+            let visibleSectionIDs = Self.resolvedVisibleSectionIDs(
+                libraries: libraryStore.libraries,
+                hiddenLibraryIDs: settingsManager.interface.hiddenLibraryIds,
+            )
             items = results
                 .compactMap(\.metadata)
+                .filter {
+                    Self.shouldIncludeSearchResult(
+                        $0,
+                        visibleSectionIDs: visibleSectionIDs,
+                    )
+                }
                 .compactMap(MediaDisplayItem.init)
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
@@ -157,9 +176,9 @@ final class SearchViewModel {
         }
     }
 
-    private func resolvedSearchTypes() -> [SearchRepository.SearchType] {
+    private func resolvedSearchTypes() -> [SearchRepository.SearchType]? {
         let filters = activeFilters
-        guard !filters.isEmpty else { return [.movies, .tv] }
+        guard !filters.isEmpty else { return nil }
 
         var types = Set<SearchRepository.SearchType>()
         for filter in filters {
@@ -171,6 +190,27 @@ final class SearchViewModel {
         }
 
         return Array(types).sorted { $0.rawValue < $1.rawValue }
+    }
+
+    static func resolvedVisibleSectionIDs(
+        libraries: [Library],
+        hiddenLibraryIDs: [String],
+    ) -> Set<Int> {
+        let hiddenIDs = Set(hiddenLibraryIDs)
+        return Set(
+            libraries.compactMap { library in
+                guard !hiddenIDs.contains(library.id) else { return nil }
+                return library.sectionId
+            },
+        )
+    }
+
+    static func shouldIncludeSearchResult(
+        _ item: PlexItem,
+        visibleSectionIDs: Set<Int>,
+    ) -> Bool {
+        guard let sectionID = item.librarySectionID else { return true }
+        return visibleSectionIDs.contains(sectionID)
     }
 
     private func resetState(error: String? = nil) {

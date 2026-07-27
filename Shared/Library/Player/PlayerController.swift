@@ -23,6 +23,7 @@ final class PlayerController {
     var subtitleMaxCueDuration = 60.0
     var errorMessage: String?
     private(set) var volume: Float = 1.0
+    private(set) var maximumVolume: Float = 1.0
     private(set) var isCoordinatedPlayback = false
 
     var isMuted: Bool {
@@ -151,12 +152,19 @@ final class PlayerController {
     }
 
     func setVolume(_ newVolume: Float) {
-        let clampedVolume = min(max(newVolume, 0), 1)
+        let clampedVolume = min(max(newVolume, 0), maximumVolume)
         volume = clampedVolume
         if clampedVolume > 0 {
             lastAudibleVolume = clampedVolume
         }
         engine.volume = clampedVolume
+    }
+
+    func setMaximumVolume(_ newMaximumVolume: Float) {
+        maximumVolume = min(max(newMaximumVolume, 0), 1)
+        if volume > maximumVolume {
+            setVolume(maximumVolume)
+        }
     }
 
     func toggleMute() {

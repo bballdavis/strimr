@@ -125,11 +125,25 @@ struct MediaDetailHeaderSection: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(viewModel.detailPrimaryLabel)
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
+            if let titleLogoURL = viewModel.titleLogoURL {
+                AsyncImage(url: titleLogoURL) { phase in
+                    switch phase {
+                    case let .success(image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 560, maxHeight: 140)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel(Text(verbatim: viewModel.detailPrimaryLabel))
+                    case .empty, .failure:
+                        titleText
+                    @unknown default:
+                        titleText
+                    }
+                }
+            } else {
+                titleText
+            }
 
             if let secondary = viewModel.detailSecondaryLabel {
                 Text(secondary)
@@ -143,6 +157,14 @@ struct MediaDetailHeaderSection: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var titleText: some View {
+        Text(viewModel.detailPrimaryLabel)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .foregroundStyle(.primary)
+            .lineLimit(2)
     }
 
     private var badgesSection: some View {
@@ -517,7 +539,7 @@ struct MediaDetailHeaderSection: View {
             Task {
                 await downloadManager.enqueueSeason(ratingKey: viewModel.media.id, context: context)
             }
-        case .movie, .episode:
+        case .movie, .episode, .clip:
             Task {
                 await downloadManager.enqueueItem(ratingKey: viewModel.media.id, context: context)
             }

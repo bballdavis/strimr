@@ -7,6 +7,7 @@ enum PlexItemType: String, Codable, Hashable, Sendable {
     case episode
     case collection
     case playlist
+    case clip
     case unknown
 
     var isSupported: Bool {
@@ -15,7 +16,7 @@ enum PlexItemType: String, Codable, Hashable, Sendable {
 
     var isPlayable: Bool {
         switch self {
-        case .movie, .show, .season, .episode:
+        case .movie, .show, .season, .episode, .clip:
             true
         case .collection, .playlist, .unknown:
             false
@@ -243,11 +244,68 @@ struct PlexMedia: Codable, Equatable {
     }
 }
 
+struct PlexFlexibleBool: Codable, Equatable, Hashable, Sendable {
+    let value: Bool
+
+    init(_ value: Bool) {
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Bool.self) {
+            self.value = value
+            return
+        }
+        if let value = try? container.decode(Int.self) {
+            switch value {
+            case 0:
+                self.value = false
+            case 1:
+                self.value = true
+            default:
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Expected a Plex boolean integer encoded as 0 or 1",
+                )
+            }
+            return
+        }
+        if let value = try? container.decode(String.self) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "0", "false":
+                self.value = false
+            case "1", "true":
+                self.value = true
+            default:
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Expected a Plex boolean string encoded as true, false, 0, or 1",
+                )
+            }
+            return
+        }
+        throw DecodingError.typeMismatch(
+            Bool.self,
+            DecodingError.Context(
+                codingPath: decoder.codingPath,
+                debugDescription: "Expected Bool, String, or Int",
+            ),
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
+    }
+}
+
 struct PlexItem: Codable, Equatable {
     // Base fields
     let ratingKey: String
     let key: String
     let guid: String
+    let librarySectionID: Int?
     let type: PlexItemType
     let title: String
     let summary: String?
@@ -325,10 +383,10 @@ struct PlexItem: Codable, Equatable {
     // Playlist
     let composite: String?
     let playlistType: String?
-    let smart: Bool?
+    let smart: PlexFlexibleBool?
 
     private enum CodingKeys: String, CodingKey {
-        case ratingKey, key, guid, type, title, summary, thumb, art, year, viewOffset, lastViewedAt, viewCount
+        case ratingKey, key, guid, librarySectionID, type, title, summary, thumb, art, year, viewOffset, lastViewedAt, viewCount
         case originallyAvailableAt, duration, audienceRating, audienceRatingImage, contentRating
         case contentRatingAge, tagline, slug, studio, rating, chapterSource, primaryExtraKey, ratingImage
         case index, leafCount, viewedLeafCount, childCount

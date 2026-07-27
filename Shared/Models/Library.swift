@@ -5,17 +5,27 @@ struct Library: Identifiable, Equatable, Hashable {
     let title: String
     let type: PlexItemType
     let sectionId: Int?
+    let agent: String
+
+    var isNoneAgentLibrary: Bool {
+        !agent.isEmpty && agent.lowercased().contains("none")
+    }
 
     var iconName: String {
+        if isNoneAgentLibrary {
+            return "play.rectangle.on.rectangle.fill"
+        }
         switch type {
         case .movie:
-            "film.fill"
+            return "film.fill"
         case .show:
-            "tv.fill"
+            return "tv.fill"
         case .season, .episode:
-            "play.rectangle.fill"
+            return "play.rectangle.fill"
+        case .clip:
+            return "play.rectangle.on.rectangle.fill"
         case .collection, .playlist, .unknown:
-            "questionmark.square.fill"
+            return "questionmark.square.fill"
         }
     }
 
@@ -24,11 +34,13 @@ struct Library: Identifiable, Equatable, Hashable {
         title: String,
         type: PlexItemType,
         sectionId: Int? = nil,
+        agent: String = "",
     ) {
         self.id = id
         self.title = title
         self.type = type
         self.sectionId = sectionId
+        self.agent = agent
     }
 }
 
@@ -39,6 +51,7 @@ extension Library {
             title: plexSection.title,
             type: plexSection.type,
             sectionId: Int(plexSection.key),
+            agent: plexSection.agent,
         )
     }
 }

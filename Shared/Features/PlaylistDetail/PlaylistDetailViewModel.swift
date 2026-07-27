@@ -10,6 +10,7 @@ final class PlaylistDetailViewModel {
     var items: [MediaDisplayItem] = []
     var isLoading = false
     var errorMessage: String?
+    @ObservationIgnored var itemFilter: ((MediaDisplayItem) -> Bool)?
     @ObservationIgnored private var refreshGate = AutomaticRefreshGate()
 
     init(playlist: PlaylistMediaItem, context: PlexAPIContext) {
@@ -70,7 +71,8 @@ final class PlaylistDetailViewModel {
                 playlist = PlaylistMediaItem(plexItem: plexPlaylist)
             }
 
-            items = (itemsContainer.mediaContainer.metadata ?? []).compactMap(MediaDisplayItem.init)
+            let mappedItems = (itemsContainer.mediaContainer.metadata ?? []).compactMap(MediaDisplayItem.init)
+            items = itemFilter.map { mappedItems.filter($0) } ?? mappedItems
         } catch {
             handleLoadError(error.localizedDescription, preservingExistingContent: preservingExistingContent)
         }

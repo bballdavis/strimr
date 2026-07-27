@@ -52,6 +52,7 @@ struct PlaybackSettings: Codable, Equatable {
     var subtitleBackgroundStrength = SubtitleBackgroundStrength.standard
     var subtitleEdgeStyle = SubtitleEdgeStyle.shadow
     var subtitleVerticalPosition = SubtitleVerticalPosition.bottom
+    var maxVolumePercent = 70
 
     init() {}
 
@@ -77,6 +78,9 @@ struct PlaybackSettings: Codable, Equatable {
             try? container.decode(SubtitleVerticalPosition.self, forKey: .subtitleVerticalPosition),
         )
             ?? .bottom
+        maxVolumePercent = Self.clampVolumePercent(
+            try container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 70,
+        )
     }
 
     var subtitleAppearance: SubtitleAppearance {
@@ -97,6 +101,10 @@ struct PlaybackSettings: Codable, Equatable {
         subtitleBackgroundStrength = .standard
         subtitleEdgeStyle = .shadow
         subtitleVerticalPosition = .bottom
+    }
+
+    static func clampVolumePercent(_ percent: Int) -> Int {
+        max(0, min(100, percent))
     }
 
     private static var defaultSubtitleFontSize: Int {
