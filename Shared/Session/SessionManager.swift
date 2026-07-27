@@ -155,6 +155,32 @@ final class SessionManager {
         }
     }
 
+    /// Compatibility seam for downstream bootstrap flows that explicitly
+    /// control whether the selected server becomes the persisted default.
+    func selectServer(_ server: PlexCloudResource, setAsDefault: Bool) async {
+        do {
+            try await selectServer(server)
+            if !setAsDefault {
+                UserDefaults.standard.removeObject(forKey: serverIdDefaultsKey)
+            }
+        } catch {
+            guard !Task.isCancelled, !error.isCancellation else { return }
+            ErrorReporter.capture(error)
+        }
+    }
+
+    /// Establishes a direct, token-authenticated server session without Plex
+    /// cloud resource discovery. Used by deterministic downstream UI tests.
+    func bootstrapDirectServerSession(
+        resource: PlexCloudResource,
+        token: String,
+        setAsDefault: Bool = true,
+    ) async {
+        authToken = token
+        context.setAuthToken(token)
+        await selectServer(resource, setAsDefault: setAsDefault)
+    }
+
     func requestProfileSelection() async {
         status = .needsProfileSelection
         plexServer = nil
