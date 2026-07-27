@@ -472,10 +472,20 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     private func persistState() {
         guard !isLoadingPersistedState else { return }
+
+        let data: Data
         do {
-            let data = try JSONEncoder().encode(items)
+            data = try JSONEncoder().encode(items)
+        } catch {
+            ErrorReporter.capture(DownloadPersistenceFailure.indexEncode)
+            return
+        }
+
+        do {
             try data.write(to: indexFileURL, options: .atomic)
-        } catch {}
+        } catch {
+            ErrorReporter.capture(DownloadPersistenceFailure.indexWrite)
+        }
     }
 
     private func loadPersistedState() {
@@ -483,11 +493,19 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         isLoadingPersistedState = true
         defer { isLoadingPersistedState = false }
 
+        let data: Data
         do {
-            let data = try Data(contentsOf: indexFileURL)
+            data = try Data(contentsOf: indexFileURL)
+        } catch {
+            ErrorReporter.capture(DownloadPersistenceFailure.indexRead)
+            return
+        }
+
+        do {
             items = try JSONDecoder().decode([DownloadItem].self, from: data)
         } catch {
-            items = []
+            // Keep both the last known in-memory state and index file available for recovery.
+            ErrorReporter.capture(DownloadPersistenceFailure.indexDecode)
         }
     }
 
@@ -515,11 +533,20 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         let folderURL = downloadsDirectory.appendingPathComponent(item.id, isDirectory: true)
         let metadataURL = folderURL.appendingPathComponent("metadata.json", isDirectory: false)
 
+        let data: Data
         do {
-            let data = try JSONEncoder().encode(item.metadata)
+            data = try JSONEncoder().encode(item.metadata)
+        } catch {
+            ErrorReporter.capture(DownloadPersistenceFailure.metadataEncode)
+            return
+        }
+
+        do {
             try data.write(to: metadataURL, options: .atomic)
             try setExcludedFromBackup(at: metadataURL)
-        } catch {}
+        } catch {
+            ErrorReporter.capture(DownloadPersistenceFailure.metadataWrite)
+        }
     }
 
     private func updateItem(_ transform: (inout DownloadItem) -> Void, matchingTask task: URLSessionTask) {
@@ -588,11 +615,22 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     private func completeDownload(task: URLSessionDownloadTask, stagedLocation: URL) async {
-        guard let index = itemIndex(for: task) else { return }
+        guard let index = itemIndex(for: task) else {
+            removeStagedFileIfPresent(at: stagedLocation)
+            return
+        }
         let item = items[index]
         let destination = resolveDownloadDestination(for: item, response: task.response)
+        var movedStagedFile = false
 
         do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: stagedLocation.path)
+            let stagedFileSize = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+            try DownloadIntegrityValidator.validate(
+                response: task.response,
+                stagedFileSize: stagedFileSize,
+            )
+
             try createDirectoryIfNeeded(at: destination.deletingLastPathComponent())
 
             if FileManager.default.fileExists(atPath: destination.path) {
@@ -600,29 +638,36 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             }
 
             try FileManager.default.moveItem(at: stagedLocation, to: destination)
+            movedStagedFile = true
             try setExcludedFromBackup(at: destination)
-
-            let fileAttributes = try FileManager.default.attributesOfItem(atPath: destination.path)
-            let fileSize = (fileAttributes[.size] as? NSNumber)?.int64Value ?? 0
 
             items[index].status = .completed
             items[index].progress = 1
-            items[index].bytesWritten = fileSize
-            items[index].totalBytes = fileSize
+            items[index].bytesWritten = stagedFileSize
+            items[index].totalBytes = stagedFileSize
             items[index].taskIdentifier = nil
             items[index].errorMessage = nil
             items[index].metadata.videoFileName = destination.lastPathComponent
-            items[index].metadata.fileSize = fileSize
+            items[index].metadata.fileSize = stagedFileSize
 
             persistMetadataFile(for: items[index])
             persistState()
             refreshStorageSummary()
         } catch {
+            removeStagedFileIfPresent(at: stagedLocation)
+            if movedStagedFile {
+                try? FileManager.default.removeItem(at: destination)
+            }
             items[index].status = .failed
             items[index].taskIdentifier = nil
-            items[index].errorMessage = error.localizedDescription
+            items[index].errorMessage = String(localized: "downloads.status.failed")
             persistState()
         }
+    }
+
+    private func removeStagedFileIfPresent(at url: URL) {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        try? FileManager.default.removeItem(at: url)
     }
 
     private nonisolated static func stageDownloadFile(at location: URL) throws -> URL {
@@ -713,4 +758,13 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             backgroundEventsCompletionHandler = nil
         }
     }
+}
+
+private enum DownloadPersistenceFailure: Error {
+    case indexEncode
+    case indexWrite
+    case indexRead
+    case indexDecode
+    case metadataEncode
+    case metadataWrite
 }
