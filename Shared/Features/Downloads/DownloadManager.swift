@@ -15,7 +15,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     private(set) var lastErrorMessage: String?
 
     @ObservationIgnored private let settingsManager: SettingsManager
-    @ObservationIgnored private let monitor = NWPathMonitor()
+    @ObservationIgnored private var monitor: NWPathMonitor?
     @ObservationIgnored private let monitorQueue = DispatchQueue(label: "strimr.downloads.network-monitor")
     @ObservationIgnored private var backgroundEventsCompletionHandler: (() -> Void)?
     @ObservationIgnored private var progressByTaskIdentifier: [Int: Double] = [:]
@@ -310,15 +310,24 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         backgroundEventsCompletionHandler = handler
     }
 
-    private func startNetworkMonitoring() {
-        monitor.pathUpdateHandler = { [weak self] path in
+    func startNetworkMonitoring() {
+        guard monitor == nil else { return }
+
+        let newMonitor = NWPathMonitor()
+        newMonitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
             Task { @MainActor in
                 self.isOffline = path.status != .satisfied
                 self.isOnWiFi = path.usesInterfaceType(.wifi)
             }
         }
-        monitor.start(queue: monitorQueue)
+        newMonitor.start(queue: monitorQueue)
+        monitor = newMonitor
+    }
+
+    func stopNetworkMonitoring() {
+        monitor?.cancel()
+        monitor = nil
     }
 
     private func configureStorage() {
