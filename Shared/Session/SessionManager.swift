@@ -158,10 +158,15 @@ final class SessionManager {
     /// Compatibility seam for downstream bootstrap flows that explicitly
     /// control whether the selected server becomes the persisted default.
     func selectServer(_ server: PlexCloudResource, setAsDefault: Bool) async {
+        let previousDefault = UserDefaults.standard.string(forKey: serverIdDefaultsKey)
         do {
             try await selectServer(server)
             if !setAsDefault {
-                UserDefaults.standard.removeObject(forKey: serverIdDefaultsKey)
+                if let previousDefault {
+                    UserDefaults.standard.set(previousDefault, forKey: serverIdDefaultsKey)
+                } else {
+                    UserDefaults.standard.removeObject(forKey: serverIdDefaultsKey)
+                }
             }
         } catch {
             guard !Task.isCancelled, !error.isCancellation else { return }
