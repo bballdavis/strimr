@@ -381,7 +381,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             let libraries = (response.mediaContainer.directory ?? [])
                 .filter(\.type.isSupported)
                 .map(Library.init)
-            let librariesBySectionID = Dictionary(
+            let librariesBySectionID: [Int: Library] = Dictionary(
                 uniqueKeysWithValues: libraries.compactMap { library in
                     guard let sectionID = library.sectionId else { return nil }
                     return (sectionID, library)
