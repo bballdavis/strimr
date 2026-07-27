@@ -21,6 +21,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     @ObservationIgnored private var progressByTaskIdentifier: [Int: Double] = [:]
     @ObservationIgnored private var isLoadingPersistedState = false
     @ObservationIgnored private var ignoredCompletionIDs: Set<String> = []
+    @ObservationIgnored private var cachedLibrariesBySectionID: [Int: Library]?
     @ObservationIgnored private let downloadsDirectory: URL
     @ObservationIgnored private let indexFileURL: URL
     @ObservationIgnored private var backgroundSession: URLSession!
@@ -145,6 +146,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
         do {
             let metadataRepository = try MetadataRepository(context: context)
+            let librariesBySectionID = await loadLibrariesBySectionID(context: context)
             let response = try await metadataRepository.getMetadata(
                 ratingKey: ratingKey,
                 params: .init(checkFiles: true),
@@ -183,6 +185,14 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 ratingKey: mediaItem.id,
                 guid: mediaItem.guid,
                 type: mediaItem.type,
+                sourceLibrarySectionID: plexItem.librarySectionID,
+                sourceLibraryAgent: plexItem.librarySectionID.flatMap {
+                    librariesBySectionID[$0]
+                }?.agent,
+                artworkLayoutStyle: preferredArtworkLayoutStyle(
+                    for: plexItem,
+                    librariesBySectionID: librariesBySectionID,
+                ),
                 title: mediaItem.title,
                 summary: mediaItem.summary,
                 genres: mediaItem.genres,
@@ -264,6 +274,38 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         refreshStorageSummary()
     }
 
+    func reconcileArtworkMetadataIfNeeded(context: PlexAPIContext) async {
+        var changed = false
+        let librariesBySectionID = await loadLibrariesBySectionID(context: context)
+        let metadataRepository = try? MetadataRepository(context: context)
+
+        for index in items.indices {
+            if items[index].metadata.sourceLibrarySectionID == nil,
+               let metadataRepository,
+               let response = try? await metadataRepository.getMetadata(
+                   ratingKey: items[index].metadata.ratingKey,
+               ),
+               let plexItem = response.mediaContainer.metadata?.first
+            {
+                items[index].metadata.sourceLibrarySectionID = plexItem.librarySectionID
+            }
+
+            let expectedArtworkLayoutStyle = preferredArtworkLayoutStyle(
+                for: items[index].metadata,
+                librariesBySectionID: librariesBySectionID,
+            )
+            if items[index].metadata.artworkLayoutStyle != expectedArtworkLayoutStyle {
+                items[index].metadata.artworkLayoutStyle = expectedArtworkLayoutStyle
+                persistMetadataFile(for: items[index])
+                changed = true
+            }
+        }
+
+        if changed {
+            persistState()
+        }
+    }
+
     func setBackgroundEventsCompletionHandler(_ handler: @escaping () -> Void) {
         backgroundEventsCompletionHandler = handler
     }
@@ -323,6 +365,63 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         } catch {
             return nil
         }
+    }
+
+    private func loadLibrariesBySectionID(context: PlexAPIContext) async -> [Int: Library] {
+        if let cachedLibrariesBySectionID {
+            return cachedLibrariesBySectionID
+        }
+
+        guard let sectionRepository = try? SectionRepository(context: context) else {
+            return [:]
+        }
+
+        do {
+            let response = try await sectionRepository.getSections()
+            let libraries = (response.mediaContainer.directory ?? [])
+                .filter(\.type.isSupported)
+                .map(Library.init)
+            let librariesBySectionID = Dictionary(
+                uniqueKeysWithValues: libraries.compactMap { library in
+                    guard let sectionID = library.sectionId else { return nil }
+                    return (sectionID, library)
+                },
+            )
+            cachedLibrariesBySectionID = librariesBySectionID
+            return librariesBySectionID
+        } catch {
+            return [:]
+        }
+    }
+
+    private func preferredArtworkLayoutStyle(
+        for plexItem: PlexItem,
+        librariesBySectionID: [Int: Library],
+    ) -> DownloadArtworkLayoutStyle {
+        if plexItem.type == .movie,
+           let sectionID = plexItem.librarySectionID,
+           let library = librariesBySectionID[sectionID],
+           library.isNoneAgentLibrary
+        {
+            return .landscape
+        }
+
+        return plexItem.type.defaultDownloadArtworkLayoutStyle
+    }
+
+    private func preferredArtworkLayoutStyle(
+        for metadata: DownloadedMediaMetadata,
+        librariesBySectionID: [Int: Library],
+    ) -> DownloadArtworkLayoutStyle {
+        if metadata.type == .movie,
+           let sectionID = metadata.sourceLibrarySectionID,
+           let library = librariesBySectionID[sectionID],
+           library.isNoneAgentLibrary
+        {
+            return .landscape
+        }
+
+        return metadata.type.defaultDownloadArtworkLayoutStyle
     }
 
     private func isAlreadyScheduled(for ratingKey: String) -> Bool {
