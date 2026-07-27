@@ -310,6 +310,33 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         backgroundEventsCompletionHandler = handler
     }
 
+    func recheckNetworkStatus(serverProbe: (() async -> Bool)? = nil) async {
+        let capturedMonitor = monitor
+        let pathResult: (isSatisfied: Bool, isWiFi: Bool) = await withCheckedContinuation { continuation in
+            monitorQueue.async {
+                guard let capturedMonitor else {
+                    continuation.resume(returning: (false, false))
+                    return
+                }
+                let path = capturedMonitor.currentPath
+                continuation.resume(returning: (
+                    path.status == .satisfied,
+                    path.usesInterfaceType(.wifi),
+                ))
+            }
+        }
+
+        let serverReachable: Bool
+        if pathResult.isSatisfied, let serverProbe {
+            serverReachable = await serverProbe()
+        } else {
+            serverReachable = pathResult.isSatisfied
+        }
+
+        isOffline = !serverReachable
+        isOnWiFi = pathResult.isWiFi && serverReachable
+    }
+
     func startNetworkMonitoring() {
         guard monitor == nil else { return }
 
