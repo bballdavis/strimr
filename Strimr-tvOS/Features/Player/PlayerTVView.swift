@@ -36,6 +36,7 @@ struct PlayerTVView: View {
     @State private var shouldResumeAfterMediaLoad = false
     @State private var shouldPauseAfterMediaLoad = false
     @FocusState private var focusedPlayerSurface: PlayerFocusTarget?
+    private let showsBufferingOverlay: Bool
     private let isPlaybackAuthorized: (PlexItem) -> Bool
 
     private let controlsHideDelay: TimeInterval = 3.0
@@ -52,10 +53,12 @@ struct PlayerTVView: View {
     init(
         viewModel: PlayerViewModel,
         onExit: @escaping () -> Void,
+        showsBufferingOverlay: Bool = true,
         isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
     ) {
         _viewModel = State(initialValue: viewModel)
         self.onExit = onExit
+        self.showsBufferingOverlay = showsBufferingOverlay
         self.isPlaybackAuthorized = isPlaybackAuthorized
     }
 
@@ -232,7 +235,7 @@ struct PlayerTVView: View {
                     }
             }
 
-            if viewModel.isBuffering {
+            if showsBufferingOverlay, viewModel.isBuffering {
                 bufferingOverlay
             }
 
