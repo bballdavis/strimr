@@ -113,7 +113,7 @@ struct MediaDetailTVView: View {
             }
             .frame(maxWidth: 520, alignment: .leading)
         }
-        .buttonStyle(PlinxMediaDetailActionStyle(treatment: .primary))
+        .buttonStyle(MediaDetailActionStyle(treatment: .primary))
         .disabled(viewModel.primaryActionRatingKey == nil)
         .accessibilityIdentifier("media.detail.play")
     }
@@ -154,7 +154,7 @@ struct MediaDetailTVView: View {
                 .font(.title2.weight(.semibold))
         }
         .buttonStyle(
-            PlinxMediaDetailActionStyle(
+            MediaDetailActionStyle(
                 treatment: .secondary,
                 secondarySideLength: 70,
             ),
@@ -178,7 +178,7 @@ struct MediaDetailTVView: View {
             }
         }
         .buttonStyle(
-            PlinxMediaDetailActionStyle(
+            MediaDetailActionStyle(
                 treatment: .secondary,
                 secondarySideLength: 68,
             ),
