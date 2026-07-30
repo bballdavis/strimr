@@ -380,9 +380,12 @@ struct MediaDetailHeaderSection: View {
             Image(systemName: "arrow.counterclockwise")
                 .font(.title2.weight(.semibold))
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .tint(.accentColor)
+        .buttonStyle(
+            PlinxMediaDetailActionStyle(
+                treatment: .secondary,
+                secondarySideLength: 70
+            )
+        )
         .accessibilityLabel(Text("media.detail.playFromStart"))
         .accessibilityIdentifier("media.detail.play-from-start")
     }
@@ -424,7 +427,6 @@ struct MediaDetailHeaderSection: View {
                         .font(.headline.weight(.semibold))
                 }
             }
-            .frame(width: 64, height: 56)
             .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
             .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
             .accessibilityIdentifier("media.detail.watch")
@@ -482,7 +484,6 @@ struct MediaDetailHeaderSection: View {
                         .font(.headline.weight(.semibold))
                 }
             }
-            .frame(width: 64, height: 56)
             .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
             .disabled(viewModel.isLoading)
             .accessibilityIdentifier("media.detail.download")

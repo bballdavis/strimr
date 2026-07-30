@@ -153,9 +153,12 @@ struct MediaDetailTVView: View {
             Image(systemName: "arrow.counterclockwise")
                 .font(.title2.weight(.semibold))
         }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .tint(.accentColor)
+        .buttonStyle(
+            PlinxMediaDetailActionStyle(
+                treatment: .secondary,
+                secondarySideLength: 70
+            )
+        )
         .accessibilityLabel(Text("media.detail.playFromStart"))
         .accessibilityIdentifier("media.detail.play-from-start")
     }
@@ -186,8 +189,12 @@ struct MediaDetailTVView: View {
                     .font(.title2.weight(.semibold))
             }
         }
-        .frame(width: 68, height: 60)
-        .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
+        .buttonStyle(
+            PlinxMediaDetailActionStyle(
+                treatment: .secondary,
+                secondarySideLength: 68
+            )
+        )
         .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
         .accessibilityIdentifier("media.detail.watch")
     }
