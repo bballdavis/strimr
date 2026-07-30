@@ -166,7 +166,7 @@ private struct PlayerControlsHeader: View {
                     .frame(width: 42, height: 42)
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(.thinMaterial)
+                            .fill(.thinMaterial),
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)

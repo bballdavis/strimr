@@ -156,23 +156,11 @@ struct MediaDetailTVView: View {
         .buttonStyle(
             PlinxMediaDetailActionStyle(
                 treatment: .secondary,
-                secondarySideLength: 70
-            )
+                secondarySideLength: 70,
+            ),
         )
         .accessibilityLabel(Text("media.detail.playFromStart"))
         .accessibilityIdentifier("media.detail.play-from-start")
-    }
-
-    private var shuffleButton: some View {
-        Button(action: handleShuffle) {
-            Image(systemName: "shuffle")
-                .font(.title2.weight(.semibold))
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .tint(.accentColor)
-        .accessibilityLabel(Text("common.actions.shuffle"))
-        .accessibilityIdentifier("media.detail.shuffle")
     }
 
     private var watchToggleButton: some View {
@@ -192,33 +180,11 @@ struct MediaDetailTVView: View {
         .buttonStyle(
             PlinxMediaDetailActionStyle(
                 treatment: .secondary,
-                secondarySideLength: 68
-            )
+                secondarySideLength: 68,
+            ),
         )
         .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
         .accessibilityIdentifier("media.detail.watch")
-    }
-
-    private var watchlistToggleButton: some View {
-        Button {
-            Task {
-                await viewModel.toggleWatchlistStatus()
-            }
-        } label: {
-            if viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus {
-                ProgressView()
-                    .tint(.brandSecondaryForeground)
-            } else {
-                Image(systemName: viewModel.watchlistActionIcon)
-                    .font(.title2.weight(.semibold))
-            }
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .tint(.accentColor)
-        .disabled(viewModel.isLoading || viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus)
-        .accessibilityLabel(Text(viewModel.watchlistActionTitle))
-        .accessibilityIdentifier("media.detail.watchlist")
     }
 
     private var seasonsSection: some View {
@@ -355,10 +321,6 @@ struct MediaDetailTVView: View {
             else { return }
             onPlayFromStart(ratingKey, playbackType)
         }
-    }
-
-    private func handleShuffle() {
-        onShuffle(viewModel.media.id, viewModel.media.plexType)
     }
 
     private func activateSharePlay() async {

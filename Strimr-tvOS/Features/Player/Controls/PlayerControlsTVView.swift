@@ -135,7 +135,6 @@ struct PlayerControlsTVView: View {
                         action: onSeekForward,
                     )
                 }
-
             }
         }
         .padding(.horizontal, 40)

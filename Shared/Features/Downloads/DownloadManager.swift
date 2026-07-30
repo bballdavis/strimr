@@ -122,11 +122,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         } else {
             let normalizedDuration = duration ?? items[index].metadata.duration
             let nearBeginning = clampedPosition < 15
-            let nearEnd: Bool
-            if let normalizedDuration, normalizedDuration > 0 {
-                nearEnd = clampedPosition >= max(normalizedDuration * 0.95, normalizedDuration - 60)
+            let nearEnd: Bool = if let normalizedDuration, normalizedDuration > 0 {
+                clampedPosition >= max(normalizedDuration * 0.95, normalizedDuration - 60)
             } else {
-                nearEnd = false
+                false
             }
 
             if nearBeginning || nearEnd {
@@ -330,11 +329,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             }
         }
 
-        let serverReachable: Bool
-        if pathResult.isSatisfied, let serverProbe {
-            serverReachable = await serverProbe()
+        let serverReachable: Bool = if pathResult.isSatisfied, let serverProbe {
+            await serverProbe()
         } else {
-            serverReachable = pathResult.isSatisfied
+            pathResult.isSatisfied
         }
 
         isOffline = !serverReachable

@@ -50,7 +50,7 @@ struct PlayerView: View {
     init(
         viewModel: PlayerViewModel,
         showsBufferingOverlay: Bool = true,
-        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
+        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true },
     ) {
         _viewModel = State(initialValue: viewModel)
         self.showsBufferingOverlay = showsBufferingOverlay

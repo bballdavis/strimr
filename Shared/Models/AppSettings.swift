@@ -3,7 +3,9 @@ import Foundation
 enum DownloadQuality: String, Codable, CaseIterable, Equatable, Identifiable {
     case original
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var title: String {
         "Original"
@@ -93,8 +95,8 @@ struct PlaybackSettings: Codable, Equatable {
             try? container.decode(SubtitleVerticalPosition.self, forKey: .subtitleVerticalPosition),
         )
             ?? .bottom
-        maxVolumePercent = Self.clampVolumePercent(
-            try container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 70,
+        maxVolumePercent = try Self.clampVolumePercent(
+            container.decodeIfPresent(Int.self, forKey: .maxVolumePercent) ?? 70,
         )
     }
 

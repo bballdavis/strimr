@@ -10,7 +10,7 @@ struct PlayerTVWrapper: View {
         viewModel: PlayerViewModel,
         onExit: @escaping () -> Void,
         showsBufferingOverlay: Bool = true,
-        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
+        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true },
     ) {
         self.viewModel = viewModel
         self.onExit = onExit
@@ -23,7 +23,7 @@ struct PlayerTVWrapper: View {
             viewModel: viewModel,
             onExit: onExit,
             showsBufferingOverlay: showsBufferingOverlay,
-            isPlaybackAuthorized: isPlaybackAuthorized
+            isPlaybackAuthorized: isPlaybackAuthorized,
         )
     }
 }
