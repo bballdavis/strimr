@@ -54,7 +54,7 @@ struct PlayerTVView: View {
         viewModel: PlayerViewModel,
         onExit: @escaping () -> Void,
         showsBufferingOverlay: Bool = true,
-        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
+        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true },
     ) {
         _viewModel = State(initialValue: viewModel)
         self.onExit = onExit

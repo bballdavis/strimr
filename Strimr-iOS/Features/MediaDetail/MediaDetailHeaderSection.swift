@@ -383,33 +383,11 @@ struct MediaDetailHeaderSection: View {
         .buttonStyle(
             PlinxMediaDetailActionStyle(
                 treatment: .secondary,
-                secondarySideLength: 70
-            )
+                secondarySideLength: 70,
+            ),
         )
         .accessibilityLabel(Text("media.detail.playFromStart"))
         .accessibilityIdentifier("media.detail.play-from-start")
-    }
-
-    private var shuffleButton: some View {
-        VStack(spacing: 2) {
-            Button(action: handleShuffle) {
-                Image(systemName: "shuffle")
-                    .font(.headline.weight(.semibold))
-            }
-            .frame(width: 48, height: 44)
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .tint(.accentColor)
-            .accessibilityIdentifier("media.detail.shuffle")
-
-            Text("common.actions.shuffle")
-                .font(.caption2)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: 48)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-        }
-        .accessibilityLabel(Text("common.actions.shuffle"))
     }
 
     private var watchToggleButton: some View {
@@ -438,37 +416,6 @@ struct MediaDetailHeaderSection: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var watchlistToggleButton: some View {
-        VStack(spacing: 2) {
-            Button {
-                Task {
-                    await viewModel.toggleWatchlistStatus()
-                }
-            } label: {
-                if viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus {
-                    ProgressView()
-                        .tint(.brandSecondaryForeground)
-                } else {
-                    Image(systemName: viewModel.watchlistActionIcon)
-                        .font(.headline.weight(.semibold))
-                }
-            }
-            .frame(width: 48, height: 44)
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .tint(.accentColor)
-            .disabled(viewModel.isLoading || viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus)
-            .accessibilityIdentifier("media.detail.watchlist")
-
-            Text(viewModel.watchlistActionTitle)
-                .font(.caption2)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: 48)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
         }
     }
 
@@ -522,10 +469,6 @@ struct MediaDetailHeaderSection: View {
             else { return }
             onPlayFromStart(ratingKey, playbackType)
         }
-    }
-
-    private func handleShuffle() {
-        onShuffle(viewModel.media.id, viewModel.media.plexType)
     }
 
     private func handleDownloadTap() {
