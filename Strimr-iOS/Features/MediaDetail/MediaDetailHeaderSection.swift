@@ -370,10 +370,7 @@ struct MediaDetailHeaderSection: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(.accentColor)
-        .foregroundStyle(.brandSecondaryForeground)
+        .buttonStyle(PlinxMediaDetailActionStyle(treatment: .primary))
         .disabled(viewModel.primaryActionRatingKey == nil)
         .accessibilityIdentifier("media.detail.play")
     }
@@ -427,17 +424,15 @@ struct MediaDetailHeaderSection: View {
                         .font(.headline.weight(.semibold))
                 }
             }
-            .frame(width: 48, height: 44)
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .tint(.accentColor)
+            .frame(width: 64, height: 56)
+            .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
             .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
             .accessibilityIdentifier("media.detail.watch")
 
             Text(viewModel.watchActionTitle)
                 .font(.caption2)
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 48)
+                .frame(maxWidth: 72)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
@@ -487,17 +482,15 @@ struct MediaDetailHeaderSection: View {
                         .font(.headline.weight(.semibold))
                 }
             }
-            .frame(width: 48, height: 44)
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .tint(.accentColor)
+            .frame(width: 64, height: 56)
+            .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
             .disabled(viewModel.isLoading)
             .accessibilityIdentifier("media.detail.download")
 
             Text("downloads.action")
                 .font(.caption2)
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 52)
+                .frame(maxWidth: 72)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }

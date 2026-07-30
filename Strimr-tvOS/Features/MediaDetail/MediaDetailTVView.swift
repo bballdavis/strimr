@@ -113,10 +113,7 @@ struct MediaDetailTVView: View {
             }
             .frame(maxWidth: 520, alignment: .leading)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(.accentColor)
-        .foregroundStyle(.brandSecondaryForeground)
+        .buttonStyle(PlinxMediaDetailActionStyle(treatment: .primary))
         .disabled(viewModel.primaryActionRatingKey == nil)
         .accessibilityIdentifier("media.detail.play")
     }
@@ -189,9 +186,8 @@ struct MediaDetailTVView: View {
                     .font(.title2.weight(.semibold))
             }
         }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .tint(.accentColor)
+        .frame(width: 68, height: 60)
+        .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
         .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
         .accessibilityIdentifier("media.detail.watch")
     }
