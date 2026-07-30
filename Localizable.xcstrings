@@ -1,11 +1,20 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@" : {
+
+    },
+    "%@%%" : {
+
+    },
     "%lld" : {
       "shouldTranslate" : false
     },
     "•" : {
       "shouldTranslate" : false
+    },
+    "1" : {
+
     },
     "auth.profile.empty" : {
       "localizations" : {
@@ -271,6 +280,9 @@
         }
       }
     },
+    "Collection: %@" : {
+
+    },
     "common.actions.cancel" : {
       "localizations" : {
         "en" : {
@@ -316,6 +328,7 @@
       }
     },
     "common.actions.delete" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -426,6 +439,7 @@
       }
     },
     "common.actions.playFromStart" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -448,6 +462,7 @@
       }
     },
     "common.actions.readMore" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -514,6 +529,7 @@
       }
     },
     "common.actions.showLess" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -580,6 +596,7 @@
       }
     },
     "common.actions.switchServer" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -644,6 +661,12 @@
           }
         }
       }
+    },
+    "Continue Watching" : {
+
+    },
+    "Deterministic Plinx refresh-indicator test route" : {
+
     },
     "downloads.action" : {
       "localizations" : {
@@ -712,6 +735,7 @@
       }
     },
     "downloads.list.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -734,6 +758,7 @@
       }
     },
     "downloads.offline.banner" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -756,6 +781,7 @@
       }
     },
     "downloads.sheet.byEpisode" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -778,6 +804,7 @@
       }
     },
     "downloads.sheet.bySeason" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -800,6 +827,7 @@
       }
     },
     "downloads.sheet.clearSelection" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -822,6 +850,7 @@
       }
     },
     "downloads.sheet.episodeNumber %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -844,6 +873,7 @@
       }
     },
     "downloads.sheet.episodeUnknown" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -866,6 +896,7 @@
       }
     },
     "downloads.sheet.quickActions" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -888,6 +919,7 @@
       }
     },
     "downloads.sheet.selectAll" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -909,7 +941,11 @@
         }
       }
     },
+    "downloads.sheet.selectedCount %@" : {
+
+    },
     "downloads.sheet.selectedCount %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -932,6 +968,7 @@
       }
     },
     "downloads.sheet.submit %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -954,6 +991,7 @@
       }
     },
     "downloads.sheet.submitting" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -976,6 +1014,7 @@
       }
     },
     "downloads.sheet.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1019,7 +1058,11 @@
         }
       }
     },
+    "downloads.status.downloading %@" : {
+
+    },
     "downloads.status.downloading %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1174,6 +1217,7 @@
       }
     },
     "downloads.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2999,6 +3043,9 @@
         }
       }
     },
+    "Media Detail: %@" : {
+
+    },
     "media.detail.cast.empty" : {
       "localizations" : {
         "en" : {
@@ -3154,6 +3201,7 @@
       }
     },
     "media.detail.episodes.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3440,6 +3488,7 @@
       }
     },
     "media.detail.studio" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3592,6 +3641,9 @@
           }
         }
       }
+    },
+    "media.labels.countEpisode %@" : {
+
     },
     "media.labels.countEpisode %lld" : {
       "localizations" : {
@@ -3771,6 +3823,28 @@
         }
       }
     },
+    "media.placeholder.noArtwork" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No artwork"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune illustration"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无封面"
+          }
+        }
+      }
+    },
     "media.rating.imdb" : {
       "localizations" : {
         "en" : {
@@ -3855,28 +3929,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "TMDB 评分"
-          }
-        }
-      }
-    },
-    "media.placeholder.noArtwork" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No artwork"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune illustration"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂无封面"
           }
         }
       }
@@ -4037,6 +4089,7 @@
       }
     },
     "player.controls.rotation.lock" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4059,6 +4112,7 @@
       }
     },
     "player.controls.rotation.unlock" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4103,6 +4157,7 @@
       }
     },
     "player.controls.volume" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4125,6 +4180,7 @@
       }
     },
     "player.controls.volume.mute" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4147,6 +4203,7 @@
       }
     },
     "player.controls.volume.unmute" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4213,6 +4270,7 @@
       }
     },
     "player.settings.speed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4235,6 +4293,7 @@
       }
     },
     "player.settings.speed.value %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4543,6 +4602,7 @@
       }
     },
     "player.window.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4563,6 +4623,12 @@
           }
         }
       }
+    },
+    "Plinx loading" : {
+
+    },
+    "Pull to refresh" : {
+
     },
     "search.badge.clip" : {
       "localizations" : {
@@ -5049,6 +5115,7 @@
       }
     },
     "seerr.detail.countries" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5071,6 +5138,7 @@
       }
     },
     "seerr.detail.createdBy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5093,6 +5161,7 @@
       }
     },
     "seerr.detail.production" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5181,6 +5250,7 @@
       }
     },
     "seerr.detail.status" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5203,6 +5273,7 @@
       }
     },
     "seerr.manageRequests.action %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6534,6 +6605,7 @@
       }
     },
     "settings.downloads.manage" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6556,6 +6628,7 @@
       }
     },
     "settings.downloads.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6578,6 +6651,7 @@
       }
     },
     "settings.downloads.wifiOnly" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6600,6 +6674,7 @@
       }
     },
     "settings.downloads.wifiOnly.footer" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6863,6 +6938,9 @@
         }
       }
     },
+    "settings.playback.fontSize %@" : {
+
+    },
     "settings.playback.fontSize %lld" : {
       "localizations" : {
         "en" : {
@@ -6950,6 +7028,9 @@
           }
         }
       }
+    },
+    "settings.playback.seconds %@" : {
+
     },
     "settings.playback.seconds %lld" : {
       "localizations" : {
@@ -7810,6 +7891,7 @@
       }
     },
     "sharePlay.leave.action" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7854,6 +7936,7 @@
       }
     },
     "sharePlay.leave.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8082,6 +8165,7 @@
       }
     },
     "signIn.tv.subtitle" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8126,6 +8210,7 @@
       }
     },
     "tabs.discover" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8170,6 +8255,7 @@
       }
     },
     "tabs.libraries" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
