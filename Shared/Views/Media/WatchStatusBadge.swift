@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension EnvironmentValues {
-    // Optimistic watched-status overrides keyed by media item ID.
+    /// Optimistic watched-status overrides keyed by media item ID.
     @Entry var watchedOverrides: [String: Bool] = [:]
 }
 
