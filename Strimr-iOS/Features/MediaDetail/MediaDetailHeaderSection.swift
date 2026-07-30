@@ -424,7 +424,7 @@ struct MediaDetailHeaderSection: View {
                         .tint(.brandSecondaryForeground)
                 } else {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.title2.weight(.semibold))
                 }
             }
             .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
@@ -481,7 +481,7 @@ struct MediaDetailHeaderSection: View {
                         .tint(.brandSecondaryForeground)
                 } else {
                     Image(systemName: downloadIconName)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.title2.weight(.semibold))
                 }
             }
             .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
