@@ -115,9 +115,10 @@ struct MediaDetailTVView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(.brandSecondary)
+        .tint(.accentColor)
         .foregroundStyle(.brandSecondaryForeground)
         .disabled(viewModel.primaryActionRatingKey == nil)
+        .accessibilityIdentifier("media.detail.play")
     }
 
     private var buttonsRow: some View {
@@ -128,17 +129,11 @@ struct MediaDetailTVView: View {
                 playFromStartButton
             }
 
-            shuffleButton
-
             if sharePlayPresentationPolicy == .enabled {
                 sharePlayButton
             }
 
             watchToggleButton
-
-            if viewModel.shouldShowWatchlistButton {
-                watchlistToggleButton
-            }
         }
     }
 
@@ -151,8 +146,9 @@ struct MediaDetailTVView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .tint(.secondary)
+        .tint(.accentColor)
         .accessibilityLabel(Text("sharePlay.action"))
+        .accessibilityIdentifier("media.detail.shareplay")
     }
 
     private var playFromStartButton: some View {
@@ -162,8 +158,9 @@ struct MediaDetailTVView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .tint(.secondary)
+        .tint(.accentColor)
         .accessibilityLabel(Text("media.detail.playFromStart"))
+        .accessibilityIdentifier("media.detail.play-from-start")
     }
 
     private var shuffleButton: some View {
@@ -173,8 +170,9 @@ struct MediaDetailTVView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .tint(.secondary)
+        .tint(.accentColor)
         .accessibilityLabel(Text("common.actions.shuffle"))
+        .accessibilityIdentifier("media.detail.shuffle")
     }
 
     private var watchToggleButton: some View {
@@ -193,8 +191,9 @@ struct MediaDetailTVView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .tint(.secondary)
+        .tint(.accentColor)
         .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
+        .accessibilityIdentifier("media.detail.watch")
     }
 
     private var watchlistToggleButton: some View {
@@ -213,9 +212,10 @@ struct MediaDetailTVView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .tint(.secondary)
+        .tint(.accentColor)
         .disabled(viewModel.isLoading || viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus)
         .accessibilityLabel(Text(viewModel.watchlistActionTitle))
+        .accessibilityIdentifier("media.detail.watchlist")
     }
 
     private var seasonsSection: some View {
