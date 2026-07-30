@@ -305,13 +305,7 @@ struct MediaDetailHeaderSection: View {
     private var secondaryButtonsRow: some View {
         HStack(alignment: .top, spacing: 12) {
             watchToggleButton
-
-            if viewModel.shouldShowWatchlistButton {
-                watchlistToggleButton
-            }
-
             downloadButton
-            shuffleButton
             if sharePlayPresentationPolicy == .enabled {
                 sharePlayButton
             }
@@ -336,8 +330,9 @@ struct MediaDetailHeaderSection: View {
                 .frame(width: 48, height: 44)
                 .buttonStyle(.bordered)
                 .controlSize(.regular)
-                .tint(.brandSecondary)
+                .tint(.accentColor)
                 .disabled(isStartingSharePlay)
+                .accessibilityIdentifier("media.detail.shareplay")
 
                 Text("sharePlay.action")
                     .font(.caption2)
@@ -377,9 +372,10 @@ struct MediaDetailHeaderSection: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(.brandSecondary)
+        .tint(.accentColor)
         .foregroundStyle(.brandSecondaryForeground)
         .disabled(viewModel.primaryActionRatingKey == nil)
+        .accessibilityIdentifier("media.detail.play")
     }
 
     private var playFromStartButton: some View {
@@ -389,8 +385,9 @@ struct MediaDetailHeaderSection: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
-        .tint(.brandSecondary)
+        .tint(.accentColor)
         .accessibilityLabel(Text("media.detail.playFromStart"))
+        .accessibilityIdentifier("media.detail.play-from-start")
     }
 
     private var shuffleButton: some View {
@@ -402,7 +399,8 @@ struct MediaDetailHeaderSection: View {
             .frame(width: 48, height: 44)
             .buttonStyle(.bordered)
             .controlSize(.regular)
-            .tint(.brandSecondary)
+            .tint(.accentColor)
+            .accessibilityIdentifier("media.detail.shuffle")
 
             Text("common.actions.shuffle")
                 .font(.caption2)
@@ -432,8 +430,9 @@ struct MediaDetailHeaderSection: View {
             .frame(width: 48, height: 44)
             .buttonStyle(.bordered)
             .controlSize(.regular)
-            .tint(.brandSecondary)
+            .tint(.accentColor)
             .disabled(viewModel.isLoading || viewModel.isUpdatingWatchStatus)
+            .accessibilityIdentifier("media.detail.watch")
 
             Text(viewModel.watchActionTitle)
                 .font(.caption2)
@@ -462,8 +461,9 @@ struct MediaDetailHeaderSection: View {
             .frame(width: 48, height: 44)
             .buttonStyle(.bordered)
             .controlSize(.regular)
-            .tint(.brandSecondary)
+            .tint(.accentColor)
             .disabled(viewModel.isLoading || viewModel.isLoadingWatchlistStatus || viewModel.isUpdatingWatchlistStatus)
+            .accessibilityIdentifier("media.detail.watchlist")
 
             Text(viewModel.watchlistActionTitle)
                 .font(.caption2)
@@ -490,8 +490,9 @@ struct MediaDetailHeaderSection: View {
             .frame(width: 48, height: 44)
             .buttonStyle(.bordered)
             .controlSize(.regular)
-            .tint(.brandSecondary)
+            .tint(.accentColor)
             .disabled(viewModel.isLoading)
+            .accessibilityIdentifier("media.detail.download")
 
             Text("downloads.action")
                 .font(.caption2)
