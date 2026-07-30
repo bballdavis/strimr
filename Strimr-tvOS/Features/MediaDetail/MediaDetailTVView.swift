@@ -185,8 +185,8 @@ struct MediaDetailTVView: View {
                 ProgressView()
                     .tint(.brandSecondaryForeground)
             } else {
-                Image(systemName: viewModel.watchActionIcon)
-                    .font(.title2.weight(.semibold))
+                Image(systemName: "checkmark")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
             }
         }
         .buttonStyle(

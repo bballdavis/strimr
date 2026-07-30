@@ -423,8 +423,8 @@ struct MediaDetailHeaderSection: View {
                     ProgressView()
                         .tint(.brandSecondaryForeground)
                 } else {
-                    Image(systemName: viewModel.watchActionIcon)
-                        .font(.headline.weight(.semibold))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                 }
             }
             .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
@@ -432,9 +432,9 @@ struct MediaDetailHeaderSection: View {
             .accessibilityIdentifier("media.detail.watch")
 
             Text(viewModel.watchActionTitle)
-                .font(.caption2)
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 72)
+                .frame(maxWidth: 88)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
@@ -481,7 +481,7 @@ struct MediaDetailHeaderSection: View {
                         .tint(.brandSecondaryForeground)
                 } else {
                     Image(systemName: downloadIconName)
-                        .font(.headline.weight(.semibold))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                 }
             }
             .buttonStyle(PlinxMediaDetailActionStyle(treatment: .secondary))
@@ -489,9 +489,9 @@ struct MediaDetailHeaderSection: View {
             .accessibilityIdentifier("media.detail.download")
 
             Text("downloads.action")
-                .font(.caption2)
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 72)
+                .frame(maxWidth: 88)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
@@ -554,13 +554,13 @@ struct MediaDetailHeaderSection: View {
     private var downloadIconName: String {
         switch downloadStatus {
         case .completed:
-            "checkmark.circle.fill"
+            "checkmark"
         case .failed:
-            "exclamationmark.circle"
+            "exclamationmark.triangle"
         case .queued, .downloading:
-            "arrow.down.circle.fill"
+            "arrow.down"
         case nil:
-            "arrow.down.circle"
+            "arrow.down"
         }
     }
 
