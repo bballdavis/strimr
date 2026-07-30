@@ -434,9 +434,10 @@ struct MediaDetailHeaderSection: View {
             Text(viewModel.watchActionTitle)
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 88)
+                .frame(width: 110)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -491,9 +492,10 @@ struct MediaDetailHeaderSection: View {
             Text("downloads.action")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.primary)
-                .frame(maxWidth: 88)
+                .frame(width: 110)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
