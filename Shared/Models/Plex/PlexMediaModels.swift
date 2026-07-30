@@ -386,7 +386,8 @@ struct PlexItem: Codable, Equatable {
     let smart: PlexFlexibleBool?
 
     private enum CodingKeys: String, CodingKey {
-        case ratingKey, key, guid, librarySectionID, type, title, summary, thumb, art, year, viewOffset, lastViewedAt, viewCount
+        case ratingKey, key, guid, librarySectionID, type, title, summary, thumb, art, year, viewOffset, lastViewedAt,
+             viewCount
         case originallyAvailableAt, duration, audienceRating, audienceRatingImage, contentRating
         case contentRatingAge, tagline, slug, studio, rating, chapterSource, primaryExtraKey, ratingImage
         case index, leafCount, viewedLeafCount, childCount

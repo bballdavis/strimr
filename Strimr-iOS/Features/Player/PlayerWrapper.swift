@@ -8,7 +8,7 @@ struct PlayerWrapper: View {
     init(
         viewModel: PlayerViewModel,
         showsBufferingOverlay: Bool = true,
-        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true }
+        isPlaybackAuthorized: @escaping (PlexItem) -> Bool = { _ in true },
     ) {
         self.viewModel = viewModel
         self.showsBufferingOverlay = showsBufferingOverlay
@@ -19,8 +19,8 @@ struct PlayerWrapper: View {
         PlayerView(
             viewModel: viewModel,
             showsBufferingOverlay: showsBufferingOverlay,
-            isPlaybackAuthorized: isPlaybackAuthorized
+            isPlaybackAuthorized: isPlaybackAuthorized,
         )
-            .transition(.opacity)
+        .transition(.opacity)
     }
 }

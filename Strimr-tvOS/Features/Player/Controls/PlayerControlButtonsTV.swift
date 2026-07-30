@@ -17,14 +17,14 @@ struct PlayerIconButton: View {
                 .overlay(
                     chrome.stroke(
                         Color.brandPrimary.opacity(isFocused ? 1.0 : 0.42),
-                        lineWidth: isFocused ? 2 : 1
-                    )
+                        lineWidth: isFocused ? 2 : 1,
+                    ),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(isFocused ? 0.28 : 0.14),
                     radius: isFocused ? 16 : 10,
                     x: 0,
-                    y: isFocused ? 10 : 6
+                    y: isFocused ? 10 : 6,
                 )
         }
         .accessibilityLabel(accessibilityLabel ?? systemName)
@@ -45,19 +45,19 @@ struct PlayPauseButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 108, height: 108)
                 .background(
-                    chrome.fill(Color.brandPrimary.opacity(isFocused ? 0.28 : 0.18))
+                    chrome.fill(Color.brandPrimary.opacity(isFocused ? 0.28 : 0.18)),
                 )
                 .overlay(
                     chrome.stroke(
                         Color.brandPrimary.opacity(isFocused ? 1.0 : 0.5),
-                        lineWidth: isFocused ? 2 : 1
-                    )
+                        lineWidth: isFocused ? 2 : 1,
+                    ),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(isFocused ? 0.34 : 0.18),
                     radius: isFocused ? 20 : 12,
                     x: 0,
-                    y: isFocused ? 12 : 8
+                    y: isFocused ? 12 : 8,
                 )
         }
         .accessibilityLabel(
@@ -90,14 +90,14 @@ struct SkipMarkerButton: View {
             .overlay(
                 chrome.stroke(
                     Color.brandPrimary.opacity(isFocused ? 1.0 : 0.4),
-                    lineWidth: isFocused ? 2 : 1
-                )
+                    lineWidth: isFocused ? 2 : 1,
+                ),
             )
             .shadow(
                 color: Color.brandPrimary.opacity(isFocused ? 0.25 : 0.12),
                 radius: isFocused ? 14 : 8,
                 x: 0,
-                y: isFocused ? 10 : 6
+                y: isFocused ? 10 : 6,
             )
         }
         .accessibilityLabel(title)
@@ -117,19 +117,19 @@ struct PlayerSettingButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 52, height: 52)
                 .background(
-                    chrome.fill(Color.brandPrimary.opacity(isFocused ? 0.24 : 0.14))
+                    chrome.fill(Color.brandPrimary.opacity(isFocused ? 0.24 : 0.14)),
                 )
                 .overlay(
                     chrome.stroke(
                         Color.brandPrimary.opacity(isFocused ? 1.0 : 0.42),
-                        lineWidth: isFocused ? 2 : 1
-                    )
+                        lineWidth: isFocused ? 2 : 1,
+                    ),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(isFocused ? 0.24 : 0.1),
                     radius: isFocused ? 14 : 8,
                     x: 0,
-                    y: isFocused ? 8 : 5
+                    y: isFocused ? 8 : 5,
                 )
         }
         .buttonStyle(.plain)

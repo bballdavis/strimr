@@ -14,13 +14,13 @@ struct PlayerIconButton: View {
                 .frame(width: 58, height: 58)
                 .background(chrome.fill(.thinMaterial))
                 .overlay(
-                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
+                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(0.14),
                     radius: 10,
                     x: 0,
-                    y: 6
+                    y: 6,
                 )
         }
         .accessibilityLabel(accessibilityLabel ?? systemName)
@@ -40,22 +40,22 @@ struct PlayPauseButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 72, height: 72)
                 .background(
-                    chrome.fill(Color.brandPrimary.opacity(0.18))
+                    chrome.fill(Color.brandPrimary.opacity(0.18)),
                 )
                 .overlay(
-                    chrome.stroke(Color.brandPrimary.opacity(0.52), lineWidth: 1)
+                    chrome.stroke(Color.brandPrimary.opacity(0.52), lineWidth: 1),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(0.18),
                     radius: 12,
                     x: 0,
-                    y: 8
+                    y: 8,
                 )
         }
         .accessibilityLabel(
             isPaused
                 ? String(localized: "common.actions.play")
-                : String(localized: "common.actions.pause")
+                : String(localized: "common.actions.pause"),
         )
         .buttonStyle(.plain)
     }
@@ -79,13 +79,13 @@ struct SkipMarkerButton: View {
             .padding(.vertical, 12)
             .background(chrome.fill(.thinMaterial))
             .overlay(
-                chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
+                chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1),
             )
             .shadow(
                 color: Color.brandPrimary.opacity(0.12),
                 radius: 8,
                 x: 0,
-                y: 6
+                y: 6,
             )
         }
         .accessibilityLabel(title)
@@ -105,13 +105,13 @@ struct PlayerSettingsButton: View {
                 .frame(width: 42, height: 42)
                 .background(chrome.fill(Color.brandPrimary.opacity(0.14)))
                 .overlay(
-                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
+                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(0.1),
                     radius: 8,
                     x: 0,
-                    y: 5
+                    y: 5,
                 )
         }
         .accessibilityLabel(String(localized: "settings.title"))
@@ -131,16 +131,16 @@ struct RotationLockButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 42, height: 42)
                 .background(
-                    chrome.fill(Color.brandPrimary.opacity(isLocked ? 0.24 : 0.14))
+                    chrome.fill(Color.brandPrimary.opacity(isLocked ? 0.24 : 0.14)),
                 )
                 .overlay(
-                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1)
+                    chrome.stroke(Color.brandPrimary.opacity(0.42), lineWidth: 1),
                 )
                 .shadow(
                     color: Color.brandPrimary.opacity(0.1),
                     radius: 8,
                     x: 0,
-                    y: 5
+                    y: 5,
                 )
         }
         .accessibilityLabel(String(localized: isLocked ? "player.controls.rotation.unlock" :

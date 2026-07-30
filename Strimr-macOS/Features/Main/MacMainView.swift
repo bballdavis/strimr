@@ -135,7 +135,7 @@ struct MacMainView: View {
                 viewModel: SearchViewModel(
                     context: context,
                     settingsManager: settingsManager,
-                    libraryStore: libraryStore
+                    libraryStore: libraryStore,
                 ),
                 onSelectMedia: appModel.showMedia,
             )

@@ -1,15 +1,8 @@
 import SwiftUI
 
-private struct WatchedOverridesKey: EnvironmentKey {
-    static let defaultValue: [String: Bool] = [:]
-}
-
 extension EnvironmentValues {
-    /// Optimistic watched-status overrides keyed by media item ID.
-    var watchedOverrides: [String: Bool] {
-        get { self[WatchedOverridesKey.self] }
-        set { self[WatchedOverridesKey.self] = newValue }
-    }
+    // Optimistic watched-status overrides keyed by media item ID.
+    @Entry var watchedOverrides: [String: Bool] = [:]
 }
 
 struct WatchStatusBadge: View {
@@ -22,14 +15,12 @@ struct WatchStatusBadge: View {
     }
 
     var body: some View {
-        Group {
-            if let remaining = media.remainingUnwatchedLeaves {
-                unfinishedBadge {
-                    Text("\(remaining)")
-                }
-            } else if isWatched {
-                watchedIndicator
+        if let remaining = media.remainingUnwatchedLeaves {
+            unfinishedBadge {
+                Text("\(remaining)")
             }
+        } else if isWatched {
+            watchedIndicator
         }
     }
 

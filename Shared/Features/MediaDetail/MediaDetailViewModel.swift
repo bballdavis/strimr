@@ -311,7 +311,7 @@ final class MediaDetailViewModel {
         titleLogoURL = imageRepository.transcodeImageURL(
             path: image.url.path,
             width: 560,
-            height: 200
+            height: 200,
         )
     }
 

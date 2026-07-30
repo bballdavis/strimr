@@ -83,31 +83,31 @@ struct TrackSelectionRow: View {
     #endif
 
     private var backgroundColor: Color {
-#if os(tvOS)
-        if isSelected {
-            return Color.brandPrimary.opacity(isFocused ? 0.24 : 0.16)
-        }
-        return Color.white.opacity(isFocused ? 0.12 : 0.07)
-#else
-        if isSelected {
-            return Color.brandPrimary.opacity(0.16)
-        }
-        return Color.white.opacity(0.07)
-#endif
+        #if os(tvOS)
+            if isSelected {
+                return Color.brandPrimary.opacity(isFocused ? 0.24 : 0.16)
+            }
+            return Color.white.opacity(isFocused ? 0.12 : 0.07)
+        #else
+            if isSelected {
+                return Color.brandPrimary.opacity(0.16)
+            }
+            return Color.white.opacity(0.07)
+        #endif
     }
 
     private var borderColor: Color {
-#if os(tvOS)
-        if isSelected {
-            return Color.brandPrimary.opacity(isFocused ? 1.0 : 0.7)
-        }
-        return Color.white.opacity(isFocused ? 0.26 : 0.16)
-#else
-        if isSelected {
-            return Color.brandPrimary.opacity(0.7)
-        }
-        return Color.white.opacity(0.16)
-#endif
+        #if os(tvOS)
+            if isSelected {
+                return Color.brandPrimary.opacity(isFocused ? 1.0 : 0.7)
+            }
+            return Color.white.opacity(isFocused ? 0.26 : 0.16)
+        #else
+            if isSelected {
+                return Color.brandPrimary.opacity(0.7)
+            }
+            return Color.white.opacity(0.16)
+        #endif
     }
 
     private var foregroundColor: Color {
@@ -140,28 +140,28 @@ struct TrackSelectionRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(backgroundColor)
+                    .fill(backgroundColor),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(borderColor, lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(borderColor, lineWidth: isSelected ? 1.5 : 1),
             )
-#if os(tvOS)
+            #if os(tvOS)
             .shadow(
                 color: isSelected ? Color.brandPrimary.opacity(0.18) : .clear,
                 radius: 6,
                 x: 0,
-                y: 4
+                y: 4,
             )
-#else
+            #else
             .shadow(
-                color: isSelected ? Color.brandPrimary.opacity(0.18) : .clear,
-                radius: 6,
-                x: 0,
-                y: 4
-            )
-#endif
-            .contentShape(Rectangle())
+                        color: isSelected ? Color.brandPrimary.opacity(0.18) : .clear,
+                        radius: 6,
+                        x: 0,
+                        y: 4,
+                    )
+            #endif
+                    .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
