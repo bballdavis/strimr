@@ -1,19 +1,79 @@
 import Foundation
 
-enum DownloadQuality: String, Codable, CaseIterable, Equatable, Identifiable {
+enum DownloadQuality: String, Codable, CaseIterable, Hashable, Identifiable {
     case original
+    case megabits20_1080p
+    case megabits12_1080p
+    case megabits10_720p
+    case megabits4_720p
+    case megabits3_720p
+    case megabits2_720p
+    case kilobits1500_480p
+    case kilobits720_328p
 
     var id: String {
         rawValue
     }
 
     var title: String {
-        "Original"
+        switch self {
+        case .original:
+            "Original"
+        case .megabits20_1080p:
+            "20 Mbps 1080p"
+        case .megabits12_1080p:
+            "12 Mbps 1080p"
+        case .megabits10_720p:
+            "10 Mbps 720p"
+        case .megabits4_720p:
+            "4 Mbps 720p"
+        case .megabits3_720p:
+            "3 Mbps 720p"
+        case .megabits2_720p:
+            "2 Mbps 720p"
+        case .kilobits1500_480p:
+            "1.5 Mbps 480p"
+        case .kilobits720_328p:
+            "0.7 Mbps 328p"
+        }
+    }
+
+    var transcodeProfile: DownloadTranscodeProfile? {
+        switch self {
+        case .original:
+            nil
+        case .megabits20_1080p:
+            DownloadTranscodeProfile(videoBitrateKbps: 20000, width: 1920, height: 1080)
+        case .megabits12_1080p:
+            DownloadTranscodeProfile(videoBitrateKbps: 12000, width: 1920, height: 1080)
+        case .megabits10_720p:
+            DownloadTranscodeProfile(videoBitrateKbps: 10000, width: 1280, height: 720)
+        case .megabits4_720p:
+            DownloadTranscodeProfile(videoBitrateKbps: 4000, width: 1280, height: 720)
+        case .megabits3_720p:
+            DownloadTranscodeProfile(videoBitrateKbps: 3000, width: 1280, height: 720)
+        case .megabits2_720p:
+            DownloadTranscodeProfile(videoBitrateKbps: 2000, width: 1280, height: 720)
+        case .kilobits1500_480p:
+            DownloadTranscodeProfile(videoBitrateKbps: 1500, width: 848, height: 480)
+        case .kilobits720_328p:
+            DownloadTranscodeProfile(videoBitrateKbps: 720, width: 640, height: 360)
+        }
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         self = Self(rawValue: (try? container.decode(String.self)) ?? "") ?? .original
+    }
+}
+
+struct DownloadTranscodeProfile: Equatable {
+    let videoBitrateKbps: Int
+    let width: Int
+    let height: Int
+
+    var resolution: String {
+        "\(width)x\(height)"
     }
 }
 

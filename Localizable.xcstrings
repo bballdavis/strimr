@@ -1084,6 +1084,16 @@
         }
       }
     },
+    "downloads.status.deciding" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choosing download format"
+          }
+        }
+      }
+    },
     "downloads.status.failed" : {
       "localizations" : {
         "en" : {
@@ -1102,6 +1112,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下载失败"
+          }
+        }
+      }
+    },
+    "downloads.status.preparing %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing • %lld%%"
           }
         }
       }

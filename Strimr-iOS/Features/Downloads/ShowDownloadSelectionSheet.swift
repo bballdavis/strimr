@@ -147,7 +147,7 @@ struct ShowDownloadSelectionSheet: View {
         case .completed:
             Image(systemName: "arrow.down.circle.fill")
                 .foregroundStyle(.green)
-        case .downloading:
+        case .deciding, .preparing, .downloading:
             ProgressView()
                 .controlSize(.small)
         case .queued:

@@ -148,6 +148,19 @@ struct DownloadsView: View {
             Text("downloads.status.queued")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        case .deciding:
+            Text("downloads.status.deciding")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .preparing:
+            VStack(alignment: .leading, spacing: 4) {
+                ProgressView(value: item.preparationProgress)
+                    .tint(.brandSecondary)
+
+                Text("downloads.status.preparing \(Int(((item.preparationProgress ?? 0) * 100).rounded()))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         case .downloading:
             VStack(alignment: .leading, spacing: 4) {
                 ProgressView(value: item.progress)

@@ -10,6 +10,14 @@ enum DownloadIntegrityValidator {
             throw DownloadIntegrityFailure.unsuccessfulStatus
         }
 
+        if let mimeType = response.mimeType?.lowercased(),
+           mimeType.hasPrefix("text/")
+           || mimeType == "application/json"
+           || mimeType.contains("xml")
+        {
+            throw DownloadIntegrityFailure.unexpectedContentType
+        }
+
         guard stagedFileSize > 0 else {
             throw DownloadIntegrityFailure.emptyFile
         }
@@ -24,6 +32,7 @@ enum DownloadIntegrityValidator {
 enum DownloadIntegrityFailure: Error, Equatable {
     case invalidResponse
     case unsuccessfulStatus
+    case unexpectedContentType
     case emptyFile
     case contentLengthMismatch
 }

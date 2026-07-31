@@ -2,18 +2,33 @@ import Foundation
 
 enum DownloadStatus: String, Codable, Hashable {
     case queued
+    case deciding
+    case preparing
     case downloading
     case completed
     case failed
 
     var isActive: Bool {
         switch self {
-        case .queued, .downloading:
+        case .queued, .deciding, .preparing, .downloading:
             true
         case .completed, .failed:
             false
         }
     }
+}
+
+enum DownloadDeliveryDecision: String, Codable, Hashable {
+    case directPlay
+    case directStream
+    case transcode
+}
+
+struct RemoteDownloadReference: Codable, Hashable {
+    var serverIdentifier: String
+    var queueID: Int
+    var itemID: Int
+    var cleanupPending: Bool
 }
 
 enum DownloadArtworkLayoutStyle: String, Codable, Hashable {
@@ -137,10 +152,14 @@ struct DownloadItem: Codable, Identifiable, Hashable {
     var id: String
     var status: DownloadStatus
     var progress: Double
+    var preparationProgress: Double? = nil
     var bytesWritten: Int64
     var totalBytes: Int64
     var taskIdentifier: Int?
     var errorMessage: String?
+    var requestedQuality: DownloadQuality? = nil
+    var deliveryDecision: DownloadDeliveryDecision? = nil
+    var remoteReference: RemoteDownloadReference? = nil
     var metadata: DownloadedMediaMetadata
 
     var ratingKey: String {
