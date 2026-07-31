@@ -77,9 +77,11 @@ final class MacSignInViewModel {
     }
 
     private func authenticationURL(for pin: PlexCloudPin) -> URL? {
-        var components = URLComponents(string: "https://app.plex.tv/auth")
-        components?.fragment = "?clientID=\(pin.clientIdentifier)&context[device][product]=Strimr&code=\(pin.code)"
-        return components?.url
+        PlexAuthURLBuilder.url(
+            clientIdentifier: pin.clientIdentifier,
+            code: pin.code,
+            productName: PlexProductIdentity.name
+        )
     }
 
     private func beginPolling(pinID: Int) {
