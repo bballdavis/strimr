@@ -46,6 +46,7 @@ struct ShowDownloadSelectionSheet: View {
             quickActionsSection
             episodesSection
         }
+        .accessibilityIdentifier("downloads.episodeSelection")
         .navigationTitle("downloads.sheet.title")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -58,6 +59,7 @@ struct ShowDownloadSelectionSheet: View {
                 Button(submitButtonTitle) {
                     submitSelection()
                 }
+                .accessibilityIdentifier("downloads.episodeSelection.submit")
                 .disabled(effectiveSelectionCount == 0 || isSubmitting)
             }
         }
@@ -121,6 +123,7 @@ struct ShowDownloadSelectionSheet: View {
             Button("downloads.sheet.selectAll") {
                 selectedEpisodeIDs.formUnion(selectableEpisodeIDsInCurrentSeason)
             }
+            .accessibilityIdentifier("downloads.episodeSelection.selectAll")
             .disabled(selectableEpisodeIDsInCurrentSeason.isEmpty)
 
             Button("downloads.sheet.clearSelection") {
@@ -182,6 +185,7 @@ struct ShowDownloadSelectionSheet: View {
         .buttonStyle(.plain)
         .disabled(isDownloaded)
         .opacity(isDownloaded ? 0.6 : 1)
+        .accessibilityIdentifier("downloads.episodeSelection.episode.\(episode.id)")
     }
 
     @ViewBuilder
