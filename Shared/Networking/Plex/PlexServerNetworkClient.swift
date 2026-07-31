@@ -86,7 +86,7 @@ final class PlexServerNetworkClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Strimr", forHTTPHeaderField: "X-Plex-Product")
+        request.setValue(PlexProductIdentity.name, forHTTPHeaderField: "X-Plex-Product")
         request.setValue(platform, forHTTPHeaderField: "X-Plex-Platform")
         if let appVersion {
             request.setValue(appVersion, forHTTPHeaderField: "X-Plex-Version")
