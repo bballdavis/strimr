@@ -62,7 +62,7 @@ final class SignInViewModel {
         PlexAuthURLBuilder.url(
             clientIdentifier: pin.clientIdentifier,
             code: pin.code,
-            productName: PlexProductIdentity.name,
+            productName: PlexProductIdentity.name
         )
     }
 
