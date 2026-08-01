@@ -21,6 +21,9 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     @ObservationIgnored private var progressByTaskIdentifier: [Int: Double] = [:]
     @ObservationIgnored private var isLoadingPersistedState = false
     @ObservationIgnored private var ignoredCompletionIDs: Set<String> = []
+    @ObservationIgnored private var preparationTasksByDownloadID: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private weak var activeContext: PlexAPIContext?
+    @ObservationIgnored private var contextsByDownloadID: [String: PlexAPIContext] = [:]
     @ObservationIgnored private var cachedLibrariesBySectionID: [Int: Library]?
     @ObservationIgnored private let downloadsDirectory: URL
     @ObservationIgnored private let indexFileURL: URL
@@ -140,28 +143,26 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         persistState()
     }
 
-    func enqueueItem(ratingKey: String, context: PlexAPIContext) async {
-        guard !isAlreadyScheduled(for: ratingKey) else { return }
+    @discardableResult
+    func enqueueItem(ratingKey: String, context: PlexAPIContext) async -> [String] {
+        guard !isAlreadyScheduled(for: ratingKey) else { return [] }
 
         do {
+            activeContext = context
             let metadataRepository = try MetadataRepository(context: context)
             let librariesBySectionID = await loadLibrariesBySectionID(context: context)
             let response = try await metadataRepository.getMetadata(
                 ratingKey: ratingKey,
                 params: .init(checkFiles: true),
             )
-            guard let plexItem = response.mediaContainer.metadata?.first else { return }
+            guard let plexItem = response.mediaContainer.metadata?.first else { return [] }
 
             let mediaItem = MediaItem(plexItem: plexItem)
-            guard mediaItem.type == .movie || mediaItem.type == .episode else { return }
-            guard let partPath = plexItem.media?.first?.parts.first?.key else { return }
-
-            let mediaRepository = try MediaRepository(context: context)
-            guard let mediaURL = mediaRepository.downloadURL(
-                path: partPath,
-                ratingKey: mediaItem.id,
-                quality: settingsManager.downloads.quality,
-            ) else { return }
+            guard mediaItem.type == .movie || mediaItem.type == .episode else { return [] }
+            guard let sourcePart = plexItem.media?.first?.parts.first else { return [] }
+            guard let serverIdentifier = context.serverIdentifier else {
+                throw PlexAPIError.missingConnection
+            }
 
             let id = UUID().uuidString
             let folderURL = downloadsDirectory.appendingPathComponent(id, isDirectory: true)
@@ -174,15 +175,13 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 destinationFolder: folderURL,
             )
 
-            var request = URLRequest(url: mediaURL)
-            if settingsManager.downloads.wifiOnly {
-                request.allowsCellularAccess = false
-                request.allowsConstrainedNetworkAccess = false
-                request.allowsExpensiveNetworkAccess = false
-            }
-
-            let task = backgroundSession.downloadTask(with: request)
-            task.taskDescription = id
+            let requestedQuality = settingsManager.downloads.quality
+            let sourceFileSize = sourcePart.size
+            let qualityResolution = DownloadSpaceSavingsPolicy.resolve(
+                requestedQuality: requestedQuality,
+                sourceFileSize: sourceFileSize,
+                duration: mediaItem.duration,
+            )
 
             let metadata = DownloadedMediaMetadata(
                 ratingKey: mediaItem.id,
@@ -218,52 +217,116 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
             let item = DownloadItem(
                 id: id,
-                status: .downloading,
+                status: .queued,
                 progress: 0,
                 bytesWritten: 0,
                 totalBytes: 0,
-                taskIdentifier: task.taskIdentifier,
+                taskIdentifier: nil,
                 errorMessage: nil,
+                requestedQuality: requestedQuality,
+                effectiveQuality: qualityResolution.effectiveQuality,
+                sourceFileSize: sourceFileSize,
+                estimatedOutputBytes: qualityResolution.estimatedOutputBytes,
+                qualityResolutionReason: qualityResolution.reason,
                 metadata: metadata,
             )
             items.append(item)
+            contextsByDownloadID[id] = context
             persistState()
-            task.resume()
+
+            do {
+                if qualityResolution.effectiveQuality == .original {
+                    try startOriginalTransfer(
+                        downloadID: id,
+                        mediaPath: sourcePart.key,
+                        context: context,
+                    )
+                    return [id]
+                }
+
+                let queueRepository = try PlexDownloadQueueRepository(
+                    context: context,
+                    sessionIdentifier: id,
+                )
+                let queue = try await queueRepository.getOrCreateQueue()
+                let remoteItem = try await queueRepository.add(
+                    ratingKey: mediaItem.id,
+                    to: queue.id,
+                    quality: qualityResolution.effectiveQuality,
+                )
+                guard let index = items.firstIndex(where: { $0.id == id }) else { return [] }
+                items[index].status = .deciding
+                items[index].remoteReference = RemoteDownloadReference(
+                    serverIdentifier: serverIdentifier,
+                    queueID: queue.id,
+                    itemID: remoteItem.id,
+                    cleanupPending: true,
+                )
+                persistState()
+                beginPreparation(forDownloadID: id, context: context)
+            } catch {
+                markPreparationFailed(downloadID: id, error: error)
+            }
+            return [id]
         } catch {
             lastErrorMessage = error.localizedDescription
+            return []
         }
     }
 
-    func enqueueSeason(ratingKey: String, context: PlexAPIContext) async {
+    @discardableResult
+    func enqueueSeason(ratingKey: String, context: PlexAPIContext) async -> [String] {
         do {
             let metadataRepository = try MetadataRepository(context: context)
             let response = try await metadataRepository.getMetadataChildren(ratingKey: ratingKey)
             let episodes = (response.mediaContainer.metadata ?? []).filter { $0.type == .episode }
+            var downloadIDs: [String] = []
             for episode in episodes {
-                await enqueueItem(ratingKey: episode.ratingKey, context: context)
+                let episodeIDs = await enqueueItem(ratingKey: episode.ratingKey, context: context)
+                downloadIDs.append(contentsOf: episodeIDs)
             }
+            return downloadIDs
         } catch {
             lastErrorMessage = error.localizedDescription
+            return []
         }
     }
 
-    func enqueueShow(ratingKey: String, context: PlexAPIContext) async {
+    @discardableResult
+    func enqueueShow(ratingKey: String, context: PlexAPIContext) async -> [String] {
         do {
             let metadataRepository = try MetadataRepository(context: context)
             let response = try await metadataRepository.getMetadataChildren(ratingKey: ratingKey)
             let seasons = (response.mediaContainer.metadata ?? []).filter { $0.type == .season }
+            var downloadIDs: [String] = []
             for season in seasons {
-                await enqueueSeason(ratingKey: season.ratingKey, context: context)
+                let seasonIDs = await enqueueSeason(ratingKey: season.ratingKey, context: context)
+                downloadIDs.append(contentsOf: seasonIDs)
             }
+            return downloadIDs
         } catch {
             lastErrorMessage = error.localizedDescription
+            return []
         }
     }
 
     func delete(_ item: DownloadItem) async {
+        preparationTasksByDownloadID[item.id]?.cancel()
+        preparationTasksByDownloadID[item.id] = nil
         if let taskIdentifier = item.taskIdentifier {
             ignoredCompletionIDs.insert(item.id)
             await cancelTask(with: taskIdentifier)
+        }
+
+        if let remote = item.remoteReference,
+           let context = contextsByDownloadID[item.id] ?? activeContext,
+           context.serverIdentifier == remote.serverIdentifier,
+           let repository = try? PlexDownloadQueueRepository(
+               context: context,
+               sessionIdentifier: item.id,
+           )
+        {
+            try? await repository.delete(queueID: remote.queueID, itemID: remote.itemID)
         }
 
         let folderURL = downloadsDirectory.appendingPathComponent(item.id, isDirectory: true)
@@ -272,6 +335,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         items.removeAll { $0.id == item.id }
+        contextsByDownloadID[item.id] = nil
         progressByTaskIdentifier.removeValue(forKey: item.taskIdentifier ?? -1)
         persistState()
         refreshStorageSummary()
@@ -337,6 +401,271 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
         isOffline = !serverReachable
         isOnWiFi = pathResult.isWiFi && serverReachable
+    }
+
+    func resumePendingDownloads(
+        context: PlexAPIContext,
+        eligibleDownloadIDs: Set<String>? = nil,
+    ) {
+        activeContext = context
+        if let eligibleDownloadIDs {
+            let ineligiblePreparationIDs = preparationTasksByDownloadID.keys.filter {
+                !eligibleDownloadIDs.contains($0)
+            }
+            for downloadID in ineligiblePreparationIDs {
+                preparationTasksByDownloadID[downloadID]?.cancel()
+                preparationTasksByDownloadID[downloadID] = nil
+            }
+            let ineligibleContextIDs = contextsByDownloadID.keys.filter {
+                !eligibleDownloadIDs.contains($0)
+            }
+            for downloadID in ineligibleContextIDs {
+                contextsByDownloadID[downloadID] = nil
+            }
+        }
+        guard let serverIdentifier = context.serverIdentifier else { return }
+
+        for item in items where item.remoteReference?.serverIdentifier == serverIdentifier {
+            if let eligibleDownloadIDs, !eligibleDownloadIDs.contains(item.id) {
+                continue
+            }
+            contextsByDownloadID[item.id] = context
+            guard let remote = item.remoteReference else { continue }
+            if item.status == .completed, remote.cleanupPending {
+                Task { [weak self, weak context] in
+                    guard let self, let context else { return }
+                    await cleanupRemoteItem(downloadID: item.id, context: context)
+                }
+            } else if item.status == .queued || item.status == .deciding || item.status == .preparing {
+                beginPreparation(forDownloadID: item.id, context: context)
+            }
+        }
+    }
+
+    private func beginPreparation(forDownloadID downloadID: String, context: PlexAPIContext) {
+        preparationTasksByDownloadID[downloadID]?.cancel()
+        preparationTasksByDownloadID[downloadID] = Task { [weak self, weak context] in
+            guard let self, let context else { return }
+            await pollPreparation(forDownloadID: downloadID, context: context)
+        }
+    }
+
+    private func pollPreparation(forDownloadID downloadID: String, context: PlexAPIContext) async {
+        var consecutiveFailures = 0
+        var didRestartExpiredItem = false
+
+        while !Task.isCancelled {
+            guard let index = items.firstIndex(where: { $0.id == downloadID }),
+                  let remote = items[index].remoteReference,
+                  context.serverIdentifier == remote.serverIdentifier
+            else {
+                preparationTasksByDownloadID[downloadID] = nil
+                return
+            }
+
+            do {
+                let repository = try PlexDownloadQueueRepository(
+                    context: context,
+                    sessionIdentifier: downloadID,
+                )
+                let remoteItem = try await repository.item(
+                    queueID: remote.queueID,
+                    itemID: remote.itemID,
+                )
+                consecutiveFailures = 0
+
+                guard let refreshedIndex = items.firstIndex(where: { $0.id == downloadID }) else {
+                    preparationTasksByDownloadID[downloadID] = nil
+                    return
+                }
+
+                switch remoteItem.status {
+                case .deciding:
+                    items[refreshedIndex].status = .deciding
+                    items[refreshedIndex].preparationProgress = nil
+                case .waiting:
+                    items[refreshedIndex].status = .queued
+                    items[refreshedIndex].preparationProgress = nil
+                case .processing:
+                    items[refreshedIndex].status = .preparing
+                    items[refreshedIndex].preparationProgress = remoteItem.transcodeSession?.progress
+                        .map { min(1, max(0, $0 / 100)) }
+                case .available:
+                    guard let profile = items[refreshedIndex].effectiveQuality?.transcodeProfile else {
+                        await rejectPreparedProfile(
+                            downloadID: downloadID,
+                            remote: remote,
+                            repository: repository,
+                        )
+                        preparationTasksByDownloadID[downloadID] = nil
+                        return
+                    }
+
+                    do {
+                        let decision = try await repository.decision(
+                            queueID: remote.queueID,
+                            itemID: remote.itemID,
+                        )
+                        do {
+                            try PlexDownloadDecisionValidator.validate(decision, profile: profile)
+                        } catch is PlexDownloadProfileValidationFailure {
+                            await rejectPreparedProfile(
+                                downloadID: downloadID,
+                                remote: remote,
+                                repository: repository,
+                            )
+                            preparationTasksByDownloadID[downloadID] = nil
+                            return
+                        }
+
+                        guard let validatedIndex = items.firstIndex(where: { $0.id == downloadID }) else {
+                            preparationTasksByDownloadID[downloadID] = nil
+                            return
+                        }
+                        items[validatedIndex].deliveryDecision = .transcode
+                        persistState()
+
+                        if let preparedSize = remoteItem.transcodeSession?.size,
+                           preparedSize > 0,
+                           DownloadSpaceSavingsPolicy.shouldReplaceTranscode(
+                               downloadedFileSize: preparedSize,
+                               sourceFileSize: items[validatedIndex].sourceFileSize,
+                               effectiveQuality: items[validatedIndex].effectiveQuality,
+                           )
+                        {
+                            items[validatedIndex].qualityResolutionReason = .actualSavingsTooSmall
+                            persistState()
+                            try await replaceTranscodeWithOriginal(
+                                downloadID: downloadID,
+                                context: context,
+                            )
+                            preparationTasksByDownloadID[downloadID] = nil
+                            return
+                        }
+
+                        try startPreparedTransfer(
+                            downloadID: downloadID,
+                            remote: remote,
+                            repository: repository,
+                        )
+                    } catch {
+                        markPreparationFailed(downloadID: downloadID, error: error)
+                    }
+                    preparationTasksByDownloadID[downloadID] = nil
+                    return
+                case .expired:
+                    guard !didRestartExpiredItem else {
+                        markPreparationFailed(
+                            downloadID: downloadID,
+                            error: PlexDownloadQueueRepositoryError.invalidResponse,
+                        )
+                        preparationTasksByDownloadID[downloadID] = nil
+                        return
+                    }
+                    try await repository.restart(queueID: remote.queueID, itemID: remote.itemID)
+                    didRestartExpiredItem = true
+                    items[refreshedIndex].status = .queued
+                    items[refreshedIndex].preparationProgress = nil
+                case .error:
+                    items[refreshedIndex].status = .failed
+                    items[refreshedIndex].taskIdentifier = nil
+                    items[refreshedIndex].errorMessage = String(localized: "downloads.status.failed")
+                    persistState()
+                    preparationTasksByDownloadID[downloadID] = nil
+                    return
+                }
+                items[refreshedIndex].errorMessage = nil
+                persistState()
+            } catch {
+                if Task.isCancelled {
+                    preparationTasksByDownloadID[downloadID] = nil
+                    return
+                }
+                consecutiveFailures += 1
+                lastErrorMessage = error.localizedDescription
+                if consecutiveFailures >= 5 {
+                    markPreparationFailed(downloadID: downloadID, error: error)
+                    preparationTasksByDownloadID[downloadID] = nil
+                    return
+                }
+            }
+
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+        preparationTasksByDownloadID[downloadID] = nil
+    }
+
+    private func startPreparedTransfer(
+        downloadID: String,
+        remote: RemoteDownloadReference,
+        repository: PlexDownloadQueueRepository,
+    ) throws {
+        guard let index = items.firstIndex(where: { $0.id == downloadID }) else { return }
+        guard items[index].taskIdentifier == nil else { return }
+
+        var request = try repository.mediaRequest(queueID: remote.queueID, itemID: remote.itemID)
+        if settingsManager.downloads.wifiOnly {
+            request.allowsCellularAccess = false
+            request.allowsConstrainedNetworkAccess = false
+            request.allowsExpensiveNetworkAccess = false
+        }
+
+        let task = backgroundSession.downloadTask(with: request)
+        task.taskDescription = downloadID
+        items[index].status = .downloading
+        items[index].progress = 0
+        items[index].preparationProgress = 1
+        items[index].taskIdentifier = task.taskIdentifier
+        items[index].errorMessage = nil
+        persistState()
+        task.resume()
+    }
+
+    private func markPreparationFailed(downloadID: String, error: Error) {
+        guard let index = items.firstIndex(where: { $0.id == downloadID }) else { return }
+        items[index].status = .failed
+        items[index].taskIdentifier = nil
+        items[index].errorMessage = String(localized: "downloads.status.failed")
+        lastErrorMessage = error.localizedDescription
+        persistState()
+    }
+
+    private func rejectPreparedProfile(
+        downloadID: String,
+        remote: RemoteDownloadReference,
+        repository: PlexDownloadQueueRepository,
+    ) async {
+        try? await repository.delete(queueID: remote.queueID, itemID: remote.itemID)
+        guard let index = items.firstIndex(where: { $0.id == downloadID }) else { return }
+        items[index].status = .failed
+        items[index].taskIdentifier = nil
+        items[index].remoteReference?.cleanupPending = false
+        items[index].qualityResolutionReason = .serverRejectedProfile
+        items[index].errorMessage = String(localized: "downloads.status.failed")
+        persistState()
+    }
+
+    private func cleanupRemoteItem(downloadID: String, context: PlexAPIContext) async {
+        guard let index = items.firstIndex(where: { $0.id == downloadID }),
+              let remote = items[index].remoteReference,
+              context.serverIdentifier == remote.serverIdentifier,
+              let repository = try? PlexDownloadQueueRepository(
+                  context: context,
+                  sessionIdentifier: downloadID,
+              )
+        else {
+            return
+        }
+
+        do {
+            try await repository.delete(queueID: remote.queueID, itemID: remote.itemID)
+            guard let refreshedIndex = items.firstIndex(where: { $0.id == downloadID }) else { return }
+            items[refreshedIndex].remoteReference?.cleanupPending = false
+            contextsByDownloadID[downloadID] = nil
+            persistState()
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
     }
 
     func startNetworkMonitoring() {
@@ -570,6 +899,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             if let taskIdentifier = items[index].taskIdentifier, runningTaskIDs.contains(taskIdentifier) {
                 items[index].status = .downloading
                 items[index].errorMessage = nil
+            } else if items[index].remoteReference != nil,
+                      [.queued, .deciding, .preparing].contains(items[index].status)
+            {
+                items[index].taskIdentifier = nil
             } else if items[index].status.isActive {
                 items[index].status = .failed
                 items[index].errorMessage = String(localized: "downloads.status.interrupted")
@@ -629,6 +962,18 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 stagedFileSize: stagedFileSize,
             )
 
+            if DownloadSpaceSavingsPolicy.shouldReplaceTranscode(
+                downloadedFileSize: stagedFileSize,
+                sourceFileSize: item.sourceFileSize,
+                effectiveQuality: item.effectiveQuality,
+            ), let context = contextsByDownloadID[item.id] {
+                removeStagedFileIfPresent(at: stagedLocation)
+                items[index].qualityResolutionReason = .actualSavingsTooSmall
+                persistState()
+                try await replaceTranscodeWithOriginal(downloadID: item.id, context: context)
+                return
+            }
+
             try createDirectoryIfNeeded(at: destination.deletingLastPathComponent())
 
             if FileManager.default.fileExists(atPath: destination.path) {
@@ -651,10 +996,29 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             persistMetadataFile(for: items[index])
             persistState()
             refreshStorageSummary()
+            if let downloadContext = contextsByDownloadID[items[index].id] {
+                if items[index].remoteReference == nil {
+                    contextsByDownloadID[items[index].id] = nil
+                } else {
+                    await cleanupRemoteItem(downloadID: items[index].id, context: downloadContext)
+                }
+            }
         } catch {
             removeStagedFileIfPresent(at: stagedLocation)
             if movedStagedFile {
                 try? FileManager.default.removeItem(at: destination)
+            }
+            if let statusCode = (task.response as? HTTPURLResponse)?.statusCode,
+               statusCode == 404 || statusCode == 503,
+               let activeContext,
+               items[index].remoteReference?.serverIdentifier == activeContext.serverIdentifier
+            {
+                items[index].status = .preparing
+                items[index].taskIdentifier = nil
+                items[index].errorMessage = nil
+                persistState()
+                beginPreparation(forDownloadID: items[index].id, context: activeContext)
+                return
             }
             items[index].status = .failed
             items[index].taskIdentifier = nil
@@ -666,6 +1030,77 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     private func removeStagedFileIfPresent(at url: URL) {
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         try? FileManager.default.removeItem(at: url)
+    }
+
+    private func startOriginalTransfer(
+        downloadID: String,
+        mediaPath: String,
+        context: PlexAPIContext,
+    ) throws {
+        guard let index = items.firstIndex(where: { $0.id == downloadID }) else { return }
+        let mediaRepository = try MediaRepository(context: context)
+        guard let mediaURL = mediaRepository.mediaURL(path: mediaPath) else {
+            throw PlexDownloadQueueRepositoryError.invalidURL
+        }
+
+        var request = URLRequest(url: mediaURL)
+        if settingsManager.downloads.wifiOnly {
+            request.allowsCellularAccess = false
+            request.allowsConstrainedNetworkAccess = false
+            request.allowsExpensiveNetworkAccess = false
+        }
+
+        let task = backgroundSession.downloadTask(with: request)
+        task.taskDescription = downloadID
+        items[index].effectiveQuality = .original
+        items[index].deliveryDecision = .directPlay
+        items[index].remoteReference = nil
+        items[index].status = .downloading
+        items[index].progress = 0
+        items[index].preparationProgress = nil
+        items[index].bytesWritten = 0
+        items[index].totalBytes = 0
+        items[index].taskIdentifier = task.taskIdentifier
+        items[index].errorMessage = nil
+        persistState()
+        task.resume()
+    }
+
+    private func replaceTranscodeWithOriginal(
+        downloadID: String,
+        context: PlexAPIContext,
+    ) async throws {
+        guard let index = items.firstIndex(where: { $0.id == downloadID }),
+              let remote = items[index].remoteReference,
+              context.serverIdentifier == remote.serverIdentifier
+        else {
+            throw PlexDownloadQueueRepositoryError.invalidResponse
+        }
+
+        let metadataRepository = try MetadataRepository(context: context)
+        let response = try await metadataRepository.getMetadata(
+            ratingKey: items[index].ratingKey,
+            params: .init(checkFiles: true),
+        )
+        guard let sourcePart = response.mediaContainer.metadata?.first?.media?.first?.parts.first else {
+            throw PlexDownloadQueueRepositoryError.invalidResponse
+        }
+
+        let repository = try PlexDownloadQueueRepository(
+            context: context,
+            sessionIdentifier: downloadID,
+        )
+        try? await repository.delete(queueID: remote.queueID, itemID: remote.itemID)
+
+        guard let refreshedIndex = items.firstIndex(where: { $0.id == downloadID }) else {
+            throw PlexDownloadQueueRepositoryError.invalidResponse
+        }
+        items[refreshedIndex].sourceFileSize = sourcePart.size ?? items[refreshedIndex].sourceFileSize
+        try startOriginalTransfer(
+            downloadID: downloadID,
+            mediaPath: sourcePart.key,
+            context: context,
+        )
     }
 
     private nonisolated static func stageDownloadFile(at location: URL) throws -> URL {

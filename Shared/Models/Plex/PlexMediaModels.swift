@@ -225,10 +225,11 @@ struct PlexPartStream: Codable, Equatable, Hashable {
 struct PlexPart: Codable, Equatable {
     let id: Int
     let key: String
+    let size: Int64?
     let stream: [PlexPartStream]?
 
     private enum CodingKeys: String, CodingKey {
-        case id, key
+        case id, key, size
         case stream = "Stream"
     }
 }

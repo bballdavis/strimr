@@ -106,6 +106,14 @@ struct MacDownloadsView: View {
         switch item.status {
         case .queued:
             Text("downloads.status.queued").foregroundStyle(.secondary)
+        case .deciding:
+            Text("downloads.status.deciding").foregroundStyle(.secondary)
+        case .preparing:
+            VStack(alignment: .leading, spacing: 4) {
+                ProgressView(value: item.preparationProgress).tint(.brandSecondary)
+                Text("downloads.status.preparing \(Int(((item.preparationProgress ?? 0) * 100).rounded()))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         case .downloading:
             VStack(alignment: .leading, spacing: 4) {
                 ProgressView(value: item.progress).tint(.brandSecondary)

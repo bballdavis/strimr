@@ -26,13 +26,4 @@ final class MediaRepository {
         ]
         return components?.url
     }
-
-    func downloadURL(path: String, ratingKey _: String, quality: DownloadQuality) -> URL? {
-        // Plex's universal transcode endpoint is a streaming-session API and is
-        // not reliable for a background URLSession download. Keep the chosen
-        // quality persisted for a future segmented-download implementation,
-        // while downloading the original part safely today.
-        _ = quality
-        return mediaURL(path: path)
-    }
 }
