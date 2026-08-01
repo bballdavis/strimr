@@ -493,7 +493,10 @@ struct MediaDetailHeaderSection: View {
     }
 
     private var isDownloadInProgress: Bool {
-        downloadStatus == .queued || downloadStatus == .downloading
+        downloadStatus == .queued
+            || downloadStatus == .deciding
+            || downloadStatus == .preparing
+            || downloadStatus == .downloading
     }
 
     private var downloadIconName: String {
@@ -502,7 +505,7 @@ struct MediaDetailHeaderSection: View {
             "checkmark"
         case .failed:
             "exclamationmark.triangle"
-        case .queued, .downloading:
+        case .queued, .deciding, .preparing, .downloading:
             "arrow.down"
         case nil:
             "arrow.down"

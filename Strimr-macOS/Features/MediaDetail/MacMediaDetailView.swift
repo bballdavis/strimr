@@ -371,14 +371,17 @@ struct MacMediaDetailView: View {
     }
 
     private var isDownloadInProgress: Bool {
-        downloadStatus == .queued || downloadStatus == .downloading
+        downloadStatus == .queued
+            || downloadStatus == .deciding
+            || downloadStatus == .preparing
+            || downloadStatus == .downloading
     }
 
     private var downloadIconName: String {
         switch downloadStatus {
         case .completed: "checkmark.circle.fill"
         case .failed: "exclamationmark.circle"
-        case .queued, .downloading: "arrow.down.circle.fill"
+        case .queued, .deciding, .preparing, .downloading: "arrow.down.circle.fill"
         case nil: "arrow.down.circle"
         }
     }
