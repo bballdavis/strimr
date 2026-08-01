@@ -6,7 +6,7 @@ enum PlexProductIdentity {
     static func productName(in infoDictionary: [String: Any]?) -> String {
         let candidates = [
             infoDictionary?["CFBundleDisplayName"] as? String,
-            infoDictionary?["CFBundleName"] as? String
+            infoDictionary?["CFBundleName"] as? String,
         ]
 
         return candidates

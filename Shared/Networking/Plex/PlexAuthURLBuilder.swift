@@ -4,13 +4,13 @@ enum PlexAuthURLBuilder {
     static func url(
         clientIdentifier: String,
         code: String,
-        productName: String
+        productName: String,
     ) -> URL {
         var fragmentQuery = URLComponents()
         fragmentQuery.queryItems = [
             URLQueryItem(name: "clientID", value: clientIdentifier),
             URLQueryItem(name: "context[device][product]", value: productName),
-            URLQueryItem(name: "code", value: code)
+            URLQueryItem(name: "code", value: code),
         ]
 
         var components = URLComponents()
