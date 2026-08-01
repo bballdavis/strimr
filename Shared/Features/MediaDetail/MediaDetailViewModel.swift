@@ -215,7 +215,7 @@ final class MediaDetailViewModel {
     }
 
     func selectSeason(id: String) async {
-        guard selectedSeasonId != id || episodes.isEmpty else { return }
+        guard selectedSeasonId != id else { return }
         selectedSeasonId = id
         episodes = []
         episodesErrorMessage = nil

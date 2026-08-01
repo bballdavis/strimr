@@ -84,9 +84,6 @@ struct MediaDetailHeaderSection: View {
             NavigationStack {
                 ShowDownloadSelectionSheet(
                     viewModel: viewModel,
-                    scope: viewModel.media.plexType == .season
-                        ? .season(viewModel.media.id)
-                        : .show,
                     onSubmitSelection: { episodeIDs in
                         for episodeID in episodeIDs {
                             await downloadManager.enqueueItem(ratingKey: episodeID, context: context)
@@ -476,8 +473,12 @@ struct MediaDetailHeaderSection: View {
 
     private func handleDownloadTap() {
         switch viewModel.media.plexType {
-        case .show, .season:
+        case .show:
             isShowingShowDownloadSheet = true
+        case .season:
+            Task {
+                await downloadManager.enqueueSeason(ratingKey: viewModel.media.id, context: context)
+            }
         case .movie, .episode, .clip:
             Task {
                 await downloadManager.enqueueItem(ratingKey: viewModel.media.id, context: context)
