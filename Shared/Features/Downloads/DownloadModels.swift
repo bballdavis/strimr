@@ -158,6 +158,10 @@ struct DownloadItem: Codable, Identifiable, Hashable {
     var taskIdentifier: Int?
     var errorMessage: String?
     var requestedQuality: DownloadQuality? = nil
+    var effectiveQuality: DownloadQuality? = nil
+    var sourceFileSize: Int64? = nil
+    var estimatedOutputBytes: Int64? = nil
+    var qualityResolutionReason: DownloadQualityResolutionReason? = nil
     var deliveryDecision: DownloadDeliveryDecision? = nil
     var remoteReference: RemoteDownloadReference? = nil
     var metadata: DownloadedMediaMetadata

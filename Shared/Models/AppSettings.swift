@@ -68,12 +68,105 @@ enum DownloadQuality: String, Codable, CaseIterable, Hashable, Identifiable {
 }
 
 struct DownloadTranscodeProfile: Equatable {
+    static let audioBitrateKbps = 192
+    static let audioChannelCount = 2
+    static let containerOverheadFraction = 0.02
+    static let minimumSavingsFraction = 0.20
+
     let videoBitrateKbps: Int
     let width: Int
     let height: Int
 
     var resolution: String {
         "\(width)x\(height)"
+    }
+
+    func estimatedOutputBytes(duration: TimeInterval) -> Int64? {
+        guard duration > 0 else { return nil }
+        let payloadBitrateKbps = videoBitrateKbps + Self.audioBitrateKbps
+        let payloadBytes = Double(payloadBitrateKbps) * 1000 * duration / 8
+        return Int64((payloadBytes * (1 + Self.containerOverheadFraction)).rounded(.up))
+    }
+}
+
+enum DownloadQualityResolutionReason: String, Codable, Hashable {
+    case requested
+    case originalIsSmaller
+    case insufficientSavings
+    case serverRejectedProfile
+    case actualSavingsTooSmall
+}
+
+struct DownloadQualityResolution: Equatable {
+    let effectiveQuality: DownloadQuality
+    let estimatedOutputBytes: Int64?
+    let reason: DownloadQualityResolutionReason
+}
+
+enum DownloadSpaceSavingsPolicy {
+    static func resolve(
+        requestedQuality: DownloadQuality,
+        sourceFileSize: Int64?,
+        duration: TimeInterval?,
+    ) -> DownloadQualityResolution {
+        guard let profile = requestedQuality.transcodeProfile else {
+            return DownloadQualityResolution(
+                effectiveQuality: .original,
+                estimatedOutputBytes: sourceFileSize,
+                reason: .requested,
+            )
+        }
+
+        let estimatedOutputBytes = duration.flatMap(profile.estimatedOutputBytes)
+        guard let sourceFileSize, sourceFileSize > 0, let estimatedOutputBytes else {
+            return DownloadQualityResolution(
+                effectiveQuality: requestedQuality,
+                estimatedOutputBytes: estimatedOutputBytes,
+                reason: .requested,
+            )
+        }
+
+        if estimatedOutputBytes >= sourceFileSize {
+            return DownloadQualityResolution(
+                effectiveQuality: .original,
+                estimatedOutputBytes: estimatedOutputBytes,
+                reason: .originalIsSmaller,
+            )
+        }
+
+        guard hasMinimumSavings(candidateSize: estimatedOutputBytes, sourceFileSize: sourceFileSize) else {
+            return DownloadQualityResolution(
+                effectiveQuality: .original,
+                estimatedOutputBytes: estimatedOutputBytes,
+                reason: .insufficientSavings,
+            )
+        }
+
+        return DownloadQualityResolution(
+            effectiveQuality: requestedQuality,
+            estimatedOutputBytes: estimatedOutputBytes,
+            reason: .requested,
+        )
+    }
+
+    static func shouldReplaceTranscode(
+        downloadedFileSize: Int64,
+        sourceFileSize: Int64?,
+        effectiveQuality: DownloadQuality?,
+    ) -> Bool {
+        guard effectiveQuality?.transcodeProfile != nil,
+              let sourceFileSize,
+              sourceFileSize > 0
+        else {
+            return false
+        }
+        return !hasMinimumSavings(candidateSize: downloadedFileSize, sourceFileSize: sourceFileSize)
+    }
+
+    static func hasMinimumSavings(candidateSize: Int64, sourceFileSize: Int64) -> Bool {
+        guard candidateSize >= 0, sourceFileSize > 0 else { return false }
+        let maximumCandidateSize = Double(sourceFileSize) * (1 - DownloadTranscodeProfile.minimumSavingsFraction)
+        return Double(candidateSize) <= maximumCandidateSize
     }
 }
 
