@@ -183,6 +183,7 @@
 				Repository/Plex/MetadataRepository.swift,
 				Repository/Plex/PlaybackRepository.swift,
 				Repository/Plex/PlaylistRepository.swift,
+				Repository/Plex/PlexDownloadQueueRepository.swift,
 				Repository/Plex/PlayQueueRepository.swift,
 				Repository/Plex/ResourceRepository.swift,
 				Repository/Plex/ScrobbleRepository.swift,
