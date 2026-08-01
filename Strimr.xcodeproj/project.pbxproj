@@ -184,6 +184,7 @@
 				Repository/Plex/PlaybackRepository.swift,
 				Repository/Plex/PlaylistRepository.swift,
 				Repository/Plex/PlayQueueRepository.swift,
+				Repository/Plex/PlexDownloadQueueRepository.swift,
 				Repository/Plex/ResourceRepository.swift,
 				Repository/Plex/ScrobbleRepository.swift,
 				Repository/Plex/SearchRepository.swift,
