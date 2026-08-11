@@ -665,6 +665,9 @@
     "Continue Watching" : {
 
     },
+    "Destination" : {
+
+    },
     "Deterministic Plinx refresh-indicator test route" : {
 
     },
@@ -5326,6 +5329,7 @@
       }
     },
     "seerr.manageRequests.action.accept" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5348,6 +5352,7 @@
       }
     },
     "seerr.manageRequests.action.decline" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5502,6 +5507,7 @@
       }
     },
     "seerr.manageRequests.short %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6633,6 +6639,9 @@
           }
         }
       }
+    },
+    "Settings closed" : {
+
     },
     "settings.downloads.manage" : {
       "extractionState" : "stale",
