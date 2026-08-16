@@ -280,9 +280,6 @@
         }
       }
     },
-    "Collection: %@" : {
-
-    },
     "common.actions.cancel" : {
       "localizations" : {
         "en" : {
@@ -1529,6 +1526,9 @@
           }
         }
       }
+    },
+    "Fixture Movie" : {
+
     },
     "home.loading" : {
       "localizations" : {
@@ -3069,9 +3069,6 @@
           }
         }
       }
-    },
-    "Media Detail: %@" : {
-
     },
     "media.detail.cast.empty" : {
       "localizations" : {
@@ -4658,6 +4655,9 @@
       }
     },
     "Plinx loading" : {
+
+    },
+    "Profile modal fixture" : {
 
     },
     "Pull to refresh" : {
