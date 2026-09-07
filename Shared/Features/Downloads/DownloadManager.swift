@@ -13,6 +13,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     private(set) var isOnWiFi = false
     private(set) var storageSummary: DownloadStorageSummary = .empty
     private(set) var lastErrorMessage: String?
+    private(set) var persistedIndexState: DownloadPersistedIndexState = .missing
 
     @ObservationIgnored private let settingsManager: SettingsManager
     @ObservationIgnored private var monitor: NWPathMonitor?
@@ -25,6 +26,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     @ObservationIgnored private weak var activeContext: PlexAPIContext?
     @ObservationIgnored private var contextsByDownloadID: [String: PlexAPIContext] = [:]
     @ObservationIgnored private var cachedLibrariesBySectionID: [Int: Library]?
+    @ObservationIgnored private var enrollmentContextProvider: (() -> DownloadEnrollmentContext?)?
     @ObservationIgnored private let downloadsDirectory: URL
     @ObservationIgnored private let indexFileURL: URL
     @ObservationIgnored private var backgroundSession: URLSession!
@@ -81,12 +83,18 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         isOffline
     }
 
+    func configureEnrollmentContextProvider(
+        _ provider: @escaping () -> DownloadEnrollmentContext?,
+    ) {
+        enrollmentContextProvider = provider
+    }
+
     func status(for ratingKey: String) -> DownloadStatus? {
-        items.first { $0.ratingKey == ratingKey }?.status
+        scopedItem(for: ratingKey)?.status
     }
 
     func progress(for ratingKey: String) -> Double? {
-        items.first { $0.ratingKey == ratingKey }?.progress
+        scopedItem(for: ratingKey)?.progress
     }
 
     func localVideoURL(for item: DownloadItem) -> URL? {
@@ -145,7 +153,27 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     @discardableResult
     func enqueueItem(ratingKey: String, context: PlexAPIContext) async -> [String] {
-        guard !isAlreadyScheduled(for: ratingKey) else { return [] }
+        let operationContext = context.operationSnapshot()
+        let enrollment = enrollmentContextProvider?()
+        return await enqueueItem(
+            ratingKey: ratingKey,
+            context: operationContext,
+            enrollment: enrollment,
+            requiresEnrollment: enrollmentContextProvider != nil,
+        )
+    }
+
+    private func enqueueItem(
+        ratingKey: String,
+        context: PlexAPIContext,
+        enrollment: DownloadEnrollmentContext?,
+        requiresEnrollment: Bool,
+    ) async -> [String] {
+        guard !requiresEnrollment || enrollment != nil else {
+            lastErrorMessage = String(localized: "downloads.status.failed")
+            return []
+        }
+        guard !isAlreadyScheduled(for: ratingKey, accessScope: enrollment?.scope) else { return [] }
 
         do {
             activeContext = context
@@ -161,6 +189,9 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             guard mediaItem.type == .movie || mediaItem.type == .episode else { return [] }
             guard let sourcePart = plexItem.media?.first?.parts.first else { return [] }
             guard let serverIdentifier = context.serverIdentifier else {
+                throw PlexAPIError.missingConnection
+            }
+            if let enrollment, enrollment.scope.serverIdentifier != serverIdentifier {
                 throw PlexAPIError.missingConnection
             }
 
@@ -228,11 +259,26 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 sourceFileSize: sourceFileSize,
                 estimatedOutputBytes: qualityResolution.estimatedOutputBytes,
                 qualityResolutionReason: qualityResolution.reason,
+                accessScope: enrollment?.scope,
                 metadata: metadata,
             )
+            do {
+                try enrollment?.authorizeAndEnroll(id, metadata)
+            } catch {
+                try? FileManager.default.removeItem(at: folderURL)
+                throw error
+            }
             items.append(item)
             contextsByDownloadID[id] = context
-            persistState()
+            do {
+                try persistStateOrThrow()
+            } catch {
+                items.removeAll { $0.id == id }
+                contextsByDownloadID.removeValue(forKey: id)
+                try? enrollment?.rollbackEnrollment(id)
+                try? FileManager.default.removeItem(at: folderURL)
+                throw error
+            }
 
             do {
                 if qualityResolution.effectiveQuality == .original {
@@ -276,13 +322,38 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     @discardableResult
     func enqueueSeason(ratingKey: String, context: PlexAPIContext) async -> [String] {
+        let operationContext = context.operationSnapshot()
+        let enrollment = enrollmentContextProvider?()
+        return await enqueueSeason(
+            ratingKey: ratingKey,
+            context: operationContext,
+            enrollment: enrollment,
+            requiresEnrollment: enrollmentContextProvider != nil,
+        )
+    }
+
+    private func enqueueSeason(
+        ratingKey: String,
+        context: PlexAPIContext,
+        enrollment: DownloadEnrollmentContext?,
+        requiresEnrollment: Bool,
+    ) async -> [String] {
+        guard !requiresEnrollment || enrollment != nil else {
+            lastErrorMessage = String(localized: "downloads.status.failed")
+            return []
+        }
         do {
             let metadataRepository = try MetadataRepository(context: context)
             let response = try await metadataRepository.getMetadataChildren(ratingKey: ratingKey)
             let episodes = (response.mediaContainer.metadata ?? []).filter { $0.type == .episode }
             var downloadIDs: [String] = []
             for episode in episodes {
-                let episodeIDs = await enqueueItem(ratingKey: episode.ratingKey, context: context)
+                let episodeIDs = await enqueueItem(
+                    ratingKey: episode.ratingKey,
+                    context: context,
+                    enrollment: enrollment,
+                    requiresEnrollment: requiresEnrollment,
+                )
                 downloadIDs.append(contentsOf: episodeIDs)
             }
             return downloadIDs
@@ -294,13 +365,38 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     @discardableResult
     func enqueueShow(ratingKey: String, context: PlexAPIContext) async -> [String] {
+        let operationContext = context.operationSnapshot()
+        let enrollment = enrollmentContextProvider?()
+        return await enqueueShow(
+            ratingKey: ratingKey,
+            context: operationContext,
+            enrollment: enrollment,
+            requiresEnrollment: enrollmentContextProvider != nil,
+        )
+    }
+
+    private func enqueueShow(
+        ratingKey: String,
+        context: PlexAPIContext,
+        enrollment: DownloadEnrollmentContext?,
+        requiresEnrollment: Bool,
+    ) async -> [String] {
+        guard !requiresEnrollment || enrollment != nil else {
+            lastErrorMessage = String(localized: "downloads.status.failed")
+            return []
+        }
         do {
             let metadataRepository = try MetadataRepository(context: context)
             let response = try await metadataRepository.getMetadataChildren(ratingKey: ratingKey)
             let seasons = (response.mediaContainer.metadata ?? []).filter { $0.type == .season }
             var downloadIDs: [String] = []
             for season in seasons {
-                let seasonIDs = await enqueueSeason(ratingKey: season.ratingKey, context: context)
+                let seasonIDs = await enqueueSeason(
+                    ratingKey: season.ratingKey,
+                    context: context,
+                    enrollment: enrollment,
+                    requiresEnrollment: requiresEnrollment,
+                )
                 downloadIDs.append(contentsOf: seasonIDs)
             }
             return downloadIDs
@@ -791,32 +887,67 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         return metadata.type.defaultDownloadArtworkLayoutStyle
     }
 
-    private func isAlreadyScheduled(for ratingKey: String) -> Bool {
+    private func scopedItem(for ratingKey: String) -> DownloadItem? {
+        guard enrollmentContextProvider != nil else {
+            return newestPreferredItem(in: items.filter { $0.ratingKey == ratingKey })
+        }
+        guard let scope = enrollmentContextProvider?()?.scope else { return nil }
+        return newestPreferredItem(in: items.filter { item in
+            item.ratingKey == ratingKey && item.accessScope == scope
+        })
+    }
+
+    private func newestPreferredItem(in candidates: [DownloadItem]) -> DownloadItem? {
+        candidates.last(where: { $0.status.isActive }) ?? candidates.last
+    }
+
+    private func isAlreadyScheduled(
+        for ratingKey: String,
+        accessScope: DownloadAccessScope?,
+    ) -> Bool {
         items.contains { item in
-            item.ratingKey == ratingKey && item.status != .failed
+            item.ratingKey == ratingKey
+                && item.accessScope == accessScope
+                && item.status != .failed
         }
     }
 
     private func persistState() {
-        guard !isLoadingPersistedState else { return }
-
-        let data: Data
         do {
-            data = try JSONEncoder().encode(items)
-        } catch {
-            ErrorReporter.capture(DownloadPersistenceFailure.indexEncode)
-            return
-        }
-
-        do {
-            try data.write(to: indexFileURL, options: .atomic)
+            try persistStateOrThrow()
+        } catch let failure as DownloadPersistenceFailure {
+            ErrorReporter.capture(failure)
         } catch {
             ErrorReporter.capture(DownloadPersistenceFailure.indexWrite)
         }
     }
 
+    private func persistStateOrThrow() throws {
+        guard !isLoadingPersistedState else { return }
+        guard persistedIndexState.permitsPersistence else {
+            throw DownloadPersistenceFailure.indexWrite
+        }
+
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(items)
+        } catch {
+            throw DownloadPersistenceFailure.indexEncode
+        }
+
+        do {
+            try data.write(to: indexFileURL, options: .atomic)
+            persistedIndexState = .loaded
+        } catch {
+            throw DownloadPersistenceFailure.indexWrite
+        }
+    }
+
     private func loadPersistedState() {
-        guard FileManager.default.fileExists(atPath: indexFileURL.path) else { return }
+        guard FileManager.default.fileExists(atPath: indexFileURL.path) else {
+            persistedIndexState = .missing
+            return
+        }
         isLoadingPersistedState = true
         defer { isLoadingPersistedState = false }
 
@@ -824,14 +955,17 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         do {
             data = try Data(contentsOf: indexFileURL)
         } catch {
+            persistedIndexState = .unreadable
             ErrorReporter.capture(DownloadPersistenceFailure.indexRead)
             return
         }
 
         do {
             items = try JSONDecoder().decode([DownloadItem].self, from: data)
+            persistedIndexState = .loaded
         } catch {
             // Keep both the last known in-memory state and index file available for recovery.
+            persistedIndexState = .corrupt
             ErrorReporter.capture(DownloadPersistenceFailure.indexDecode)
         }
     }
@@ -892,6 +1026,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     private func restoreRunningTasks() async {
+        guard persistedIndexState == .loaded else { return }
         let tasks = await allTasks()
         let runningTaskIDs = Set(tasks.map(\.taskIdentifier))
 

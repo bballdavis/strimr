@@ -42,6 +42,21 @@ final class PlexAPIContext {
         await bootstrapTask?.value
     }
 
+    /// Captures the current cloud and server credentials for one logical
+    /// operation. Long-running download preparation must not begin using a
+    /// different profile or server when the live session changes mid-await.
+    func operationSnapshot() -> PlexAPIContext {
+        let snapshot = PlexAPIContext()
+        snapshot.bootstrapTask?.cancel()
+        snapshot.bootstrapTask = nil
+        snapshot.authTokenCloud = authTokenCloud
+        snapshot.clientIdentifier = clientIdentifier
+        snapshot.resource = resource
+        snapshot.baseURLServer = baseURLServer
+        snapshot.authTokenServer = authTokenServer
+        return snapshot
+    }
+
     func setAuthToken(_ token: String) {
         authTokenCloud = token
     }

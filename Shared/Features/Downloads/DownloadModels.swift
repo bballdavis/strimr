@@ -1,5 +1,44 @@
 import Foundation
 
+/// Product-neutral authorization context captured once for a public enqueue
+/// operation and reused by nested season/show batches.
+struct DownloadAccessScope: Codable, Hashable, Sendable {
+    let serverIdentifier: String
+    let accessScopeIdentifier: String
+}
+
+struct DownloadEnrollmentContext {
+    let scope: DownloadAccessScope
+    let authorizeAndEnroll: @MainActor (_ downloadID: String, _ metadata: DownloadedMediaMetadata) throws -> Void
+    let rollbackEnrollment: @MainActor (_ downloadID: String) throws -> Void
+
+    init(
+        scope: DownloadAccessScope,
+        authorizeAndEnroll: @escaping @MainActor (_ downloadID: String, _ metadata: DownloadedMediaMetadata) throws
+            -> Void,
+        rollbackEnrollment: @escaping @MainActor (_ downloadID: String) throws -> Void = { _ in },
+    ) {
+        self.scope = scope
+        self.authorizeAndEnroll = authorizeAndEnroll
+        self.rollbackEnrollment = rollbackEnrollment
+    }
+}
+
+enum DownloadPersistedIndexState: Equatable {
+    case missing
+    case loaded
+    case unreadable
+    case corrupt
+
+    var permitsOwnershipMigration: Bool {
+        self == .missing || self == .loaded
+    }
+
+    var permitsPersistence: Bool {
+        self == .missing || self == .loaded
+    }
+}
+
 enum DownloadStatus: String, Codable, Hashable {
     case queued
     case deciding
@@ -164,6 +203,7 @@ struct DownloadItem: Codable, Identifiable, Hashable {
     var qualityResolutionReason: DownloadQualityResolutionReason? = nil
     var deliveryDecision: DownloadDeliveryDecision? = nil
     var remoteReference: RemoteDownloadReference? = nil
+    var accessScope: DownloadAccessScope? = nil
     var metadata: DownloadedMediaMetadata
 
     var ratingKey: String {
