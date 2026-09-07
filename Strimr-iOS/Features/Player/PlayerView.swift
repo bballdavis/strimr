@@ -248,6 +248,7 @@ struct PlayerView: View {
                     isRotationLocked: isRotationLocked,
                     onToggleRotationLock: toggleRotationLock,
                     isSharePlay: sharePlayCoordinator.isInSession,
+                    onTitleInteractionChanged: handleTitleInteractionChanged,
                 )
                 .transition(.opacity)
             }
@@ -552,6 +553,14 @@ struct PlayerView: View {
         hideControlsWorkItem?.cancel()
         withAnimation(.easeInOut) {
             controlsVisible = false
+        }
+    }
+
+    private func handleTitleInteractionChanged(_ isInteracting: Bool) {
+        if isInteracting {
+            hideControlsWorkItem?.cancel()
+        } else if controlsVisible, !isScrubbing {
+            scheduleControlsHide()
         }
     }
 

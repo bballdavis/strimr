@@ -24,6 +24,7 @@ struct PlayerControlsView: View {
     var isRotationLocked: Bool
     var onToggleRotationLock: () -> Void
     var isSharePlay: Bool
+    var onTitleInteractionChanged: (Bool) -> Void = { _ in }
     private var playbackBadges: [PlayerControlBadge] {
         var badges: [PlayerControlBadge] = []
 
